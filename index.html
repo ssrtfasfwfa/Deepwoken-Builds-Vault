@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#101722">
+<title>Deepwoken Build Vault</title>
+<link rel="manifest" href="manifest.webmanifest">
+<style>
+:root{color-scheme:dark;--bg:#0c131d;--panel:#172333;--line:#30445b;--gold:#e8bf70;--text:#edf3fa;--muted:#a9b8c9;--green:#77c99a;--red:#e58b8b}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:15px system-ui,sans-serif}
+header{padding:25px max(18px,calc((100% - 1180px)/2));background:#142131;border-bottom:1px solid var(--line)}
+h1{margin:0;color:var(--gold);letter-spacing:1.5px;font-size:clamp(21px,4vw,30px)}header p{margin:7px 0 0;color:var(--muted)}
+main{max-width:1180px;margin:22px auto;padding:0 16px}.panel,.toolbar{background:var(--panel);border:1px solid var(--line);border-radius:13px;padding:15px;margin-bottom:15px}
+.toolbar{display:grid;grid-template-columns:minmax(180px,1fr) minmax(145px,190px) auto auto auto;gap:9px;align-items:center}
+input,select,textarea,button{font:inherit;border:1px solid var(--line);border-radius:9px;padding:10px;background:#0d1825;color:var(--text);min-width:0}
+button{cursor:pointer;background:#2a4058}button:hover{filter:brightness(1.15)}button.primary{background:#89662e;border-color:#bd9448;color:white}
+button.danger{background:#542d35;border-color:#85444d}.toolbar input{width:100%}
+.stats{color:var(--muted);font-size:13px;margin:0 0 12px}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,280px),1fr));gap:12px}
+.card{background:#111c29;border:1px solid var(--line);padding:15px;border-radius:12px;min-width:0}.card h3{margin:0 0 9px;color:var(--gold);overflow-wrap:anywhere}
+.tag{display:inline-block;border:1px solid var(--line);border-radius:30px;padding:3px 8px;margin:2px;font-size:12px;color:#d9e3ef}
+.muted{color:var(--muted)}.card p{overflow-wrap:anywhere}.card a{color:#f1cc7e;display:inline-block;margin:5px 0}
+.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.actions button{padding:8px 12px}
+label{display:block;color:var(--muted);font-size:13px;margin:8px 0 4px}
+.formgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(175px,1fr));gap:8px}.formgrid input,.formgrid select{width:100%}
+textarea{width:100%;min-height:90px;resize:vertical}.form-actions{display:flex;gap:9px;flex-wrap:wrap;margin-top:12px}
+#empty{color:var(--muted);padding:35px 15px;text-align:center;border:1px dashed var(--line);border-radius:12px}
+.importrow{display:flex;gap:9px;flex-wrap:wrap;align-items:center;margin-top:10px}.importrow label{margin:0}.importrow input[type=file]{max-width:240px}
+small{color:var(--muted)}.notice{padding:10px 12px;background:#10291f;border:1px solid #2c6046;border-radius:9px;color:#bce9ce;margin-bottom:12px}
+@media(max-width:760px){.toolbar{grid-template-columns:1fr 1fr}.toolbar #search{grid-column:1/-1}.toolbar button{width:100%}.toolbar .filewrap{grid-column:1/-1}.toolbar .filewrap input{width:100%;max-width:none}}
+@media(max-width:420px){main{padding:0 10px}.panel,.toolbar{padding:12px}.toolbar{grid-template-columns:1fr 1fr}.formgrid{grid-template-columns:1fr 1fr}.formgrid>div:first-child{grid-column:1/-1}.actions button{flex:1}}
+</style></head>
+<body>
+<header><h1>⚡ DEEPWOKEN BUILD VAULT</h1><p>Your local build library · Add · Search · Edit · Import · Export</p></header>
+<main>
+<div class="notice">Autosaves on this device. Export a JSON backup regularly to move your library between desktop and phone.</div>
+<section class="toolbar">
+<input id="search" placeholder="Search name, weapon, oath, stats…">
+<select id="category"><option value="">All categories</option><option>PVP</option><option>PVE</option><option>HYBRID</option><option>EXPERIMENTAL</option></select>
+<button class="primary" id="newBtn">＋ Add build</button>
+<button id="exportBtn">Export backup</button>
+<div class="filewrap"><input type="file" id="importFile" accept=".json,.csv,application/json,text/csv" aria-label="Import JSON or CSV"></div>
+</section>
+<p class="stats" id="stats">0 saved builds</p>
+<section class="panel" id="editor" hidden>
+<h2 id="formTitle">Add build</h2>
+<form id="buildForm"><div class="formgrid" id="formFields"></div>
+<label for="notes">Talents, mantras, equipment & notes</label><textarea id="notes" name="Notes" placeholder="Add details, source notes, combo ideas, gear…"></textarea>
+<div class="form-actions"><button class="primary" type="submit">Save build</button><button type="button" id="cancelBtn">Cancel</button></div></form>
+</section>
+<section class="grid" id="cards"></section><div id="empty">Your vault is empty. Add your first build or import a JSON/CSV file.</div>
+<section class="panel" style="margin-top:16px"><strong>Import options</strong><div class="importrow">
+<label for="importMode">When importing:</label><select id="importMode"><option value="merge">Merge — keep existing builds, skip duplicates</option><option value="replace">Replace — overwrite this device's library</option></select>
+</div><small>Supported JSON: an array of build objects or an object containing a “builds” array. CSV: first row must contain column names. Exported backups include IDs and timestamps.</small></section>
+</main>
+<script>
+const STORE='deepwoken-build-vault-v2';
+const fields=['Build Name','Category','Weapon','Attunement','Oath','Race','Power','Strength','Fortitude','Agility','Intelligence','Willpower','Charisma','Weapon Stat','Elemental Stat','Playstyle','Builder Link','Source','Patch/Version','Status'];
+const selectOptions={
+'Category':['PVP','PVE','HYBRID','EXPERIMENTAL'],
+'Attunement':['None','Flamecharm','Frostdraw','Thundercall','Galebreathe','Shadowcast','Ironsing','Bloodrend','Other'],
+'Status':['Current','Experimental','Outdated','Unverified']
+};
+const $=id=>document.getElementById(id);
+let builds=load(),editingId=null;
+function load(){try{const x=JSON.parse(localStorage.getItem(STORE)||'[]');return Array.isArray(x)?x:[]}catch{return []}}
+function persist(){try{localStorage.setItem(STORE,JSON.stringify(builds));return true}catch(e){alert('Could not save. Your browser storage may be full. Export a backup, then remove some data or clear unused browser storage.');return false}}
+function makeId(){return 'dw-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,9)}
+function normalize(b){const out={};fields.forEach(k=>out[k]=String(b?.[k]??'').trim());out.Notes=String(b?.Notes??'').trim();out.id=String(b?.id||makeId());out.createdAt=b?.createdAt||new Date().toISOString();out.updatedAt=new Date().toISOString();return out}
+const form=$('buildForm'),formFields=$('formFields');
+fields.forEach(k=>{const wrap=document.createElement('div'),lab=document.createElement('label');lab.textContent=k;lab.htmlFor='f-'+k;let input;
+if(selectOptions[k]){input=document.createElement('select');selectOptions[k].forEach(v=>{const o=document.createElement('option');o.value=v;o.textContent=v;input.append(o)});if(k==='Category')input.value='PVP';if(k==='Status')input.value='Unverified'}
+else{input=document.createElement('input');input.type=k==='Builder Link'?'url':'text';input.placeholder=k==='Builder Link'?'https://…':''}
+input.id='f-'+k;input.name=k;wrap.append(lab,input);formFields.append(wrap)});
+function render(){const q=$('search').value.toLowerCase(),cat=$('category').value;const shown=builds.filter(b=>(!cat||b.Category===cat)&&Object.values(b).join(' ').toLowerCase().includes(q));$('cards').replaceChildren();$('empty').hidden=shown.length>0;$('stats').textContent=`${builds.length} saved build${builds.length===1?'':'s'} · showing ${shown.length}`;
+shown.forEach(b=>{const c=document.createElement('article');c.className='card';const title=document.createElement('h3');title.textContent=b['Build Name']||'Unnamed build';c.append(title);
+['Category','Weapon','Attunement','Oath','Race','Power','Status'].forEach(k=>{if(b[k]){const s=document.createElement('span');s.className='tag';s.textContent=k+': '+b[k];c.append(s)}});
+const detail=['Playstyle','Notes','Talents','Mantras','Source','Patch/Version'].filter(k=>b[k]).map(k=>k+': '+b[k]).join('\\n');if(detail){const p=document.createElement('p');p.className='muted';p.style.whiteSpace='pre-wrap';p.textContent=detail;c.append(p)}
+if(b['Builder Link']){try{const u=new URL(b['Builder Link']);if(['http:','https:'].includes(u.protocol)){const a=document.createElement('a');a.href=u.href;a.target='_blank';a.rel='noopener noreferrer';a.textContent='Open builder link ↗';c.append(a)}}catch{}}
+const meta=document.createElement('small');meta.textContent='Updated '+new Date(b.updatedAt||b.createdAt||Date.now()).toLocaleDateString();c.append(meta);
+const row=document.createElement('div');row.className='actions';const e=document.createElement('button'),d=document.createElement('button');e.textContent='Edit';d.textContent='Delete';d.className='danger';e.onclick=()=>openEditor(b.id);d.onclick=()=>{if(confirm('Delete “'+(b['Build Name']||'this build')+'”?')){builds=builds.filter(x=>x.id!==b.id);persist();render()}};row.append(e,d);c.append(row);$('cards').append(c)})}
+function openEditor(id=null){editingId=id;form.reset();$('editor').hidden=false;$('formTitle').textContent=id?'Edit build':'Add build';if(id){const b=builds.find(x=>x.id===id);if(!b)return;fields.forEach(k=>form.elements[k].value=b[k]||'');$('notes').value=b.Notes||''}else{form.elements.Category.value='PVP';form.elements.Status.value='Unverified'}window.scrollTo({top:0,behavior:'smooth'})}
+form.onsubmit=e=>{e.preventDefault();const b={};fields.forEach(k=>b[k]=form.elements[k].value.trim());b.Notes=$('notes').value.trim();if(b['Builder Link']){try{const u=new URL(b['Builder Link']);if(!['http:','https:'].includes(u.protocol))throw 0}catch{alert('Builder Link must be a valid http or https URL.');return}}
+if(!b['Build Name']){alert('Please enter a build name.');return}
+if(editingId){const i=builds.findIndex(x=>x.id===editingId);if(i>=0)builds[i]=normalize({...builds[i],...b,id:editingId})}else builds.unshift(normalize(b));
+if(persist()){$('editor').hidden=true;render()}};
+function download(name,content,type){const blob=new Blob([content],{type}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)}
+$('newBtn').onclick=()=>openEditor();$('cancelBtn').onclick=()=>$('editor').hidden=true;$('search').oninput=render;$('category').onchange=render;
+$('exportBtn').onclick=()=>download('deepwoken-build-vault-backup.json',JSON.stringify({project:'DEEPWOKEN BUILD VAULT',schemaVersion:2,exportedAt:new Date().toISOString(),builds},null,2),'application/json');
+function parseCSV(text){const rows=[];let row=[],cell='',quoted=false;for(let i=0;i<text.length;i++){const ch=text[i],next=text[i+1];if(ch==='"'&&quoted&&next==='"'){cell+='"';i++}else if(ch==='"'){quoted=!quoted}else if(ch===','&&!quoted){row.push(cell);cell=''}else if((ch==='\\n'||ch==='\\r')&&!quoted){if(ch==='\\r'&&next==='\\n')i++;row.push(cell);if(row.some(v=>v.trim()))rows.push(row);row=[];cell=''}else cell+=ch}row.push(cell);if(row.some(v=>v.trim()))rows.push(row);if(rows.length<2)throw Error('CSV needs a header and at least one data row.');const headers=rows.shift().map(x=>x.trim());return rows.map(r=>Object.fromEntries(headers.map((h,i)=>[h,r[i]??''])))}
+function isDuplicate(a,b){if(a.id&&b.id&&a.id===b.id)return true;const an=(a['Build Name']||'').trim().toLowerCase(),bn=(b['Build Name']||'').trim().toLowerCase();const al=(a['Builder Link']||'').trim().toLowerCase(),bl=(b['Builder Link']||'').trim().toLowerCase();return !!an&&an===bn&&al===bl}
+$('importFile').onchange=async e=>{const file=e.target.files[0];if(!file)return;try{const text=await file.text();let arr;if(file.name.toLowerCase().endsWith('.csv'))arr=parseCSV(text);else{const parsed=JSON.parse(text);arr=Array.isArray(parsed)?parsed:parsed.builds}
+if(!Array.isArray(arr))throw Error('No builds array found.');const incoming=arr.filter(x=>x&&typeof x==='object'&&!Array.isArray(x)).map(normalize);if(!incoming.length)throw Error('No valid build records found.');
+if($('importMode').value==='replace'){if(!confirm(`Replace your ${builds.length} saved builds with ${incoming.length} imported builds? Export a backup first if needed.`))return;builds=incoming}
+else{let added=0;incoming.forEach(b=>{if(!builds.some(existing=>isDuplicate(existing,b))){builds.push(b);added++}});alert(`Imported ${added} new build(s). ${incoming.length-added} duplicate(s) skipped.`)}
+if(persist())render()
+}catch(err){alert('Import failed: '+(err.message||'Please check the file format.'))}finally{e.target.value=''}};
+if('serviceWorker' in navigator && location.protocol!=='file:')window.addEventListener('load',()=>navigator.serviceWorker.register('./service-worker.js').catch(()=>{}));
+render();
+</script></body></html>

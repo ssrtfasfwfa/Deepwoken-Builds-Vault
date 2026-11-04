@@ -1,0 +1,16 @@
+{
+  "name": "Deepwoken Build Vault",
+  "short_name": "Build Vault",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#0c131d",
+  "theme_color": "#101722",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
