@@ -30,7 +30,39 @@ label{display:block;color:#b8cebf;font-size:13px;margin:8px 0 4px}.formgrid{disp
 <body>
 <header><h1>⚡ DEEPWOKEN BUILD VAULT</h1><p>Your local build library · Add · Search · Edit · Import · Export</p></header>
 <main>
-<div class="notice">Autosaves on this device. Export a JSON backup regularly to move your library between desktop and phone.</div>
+<section class="panel" id="accountPanel">
+  <h2>Vault Account</h2>
+  <p class="muted">Create an account to save your builds online and access them on other devices.</p>
+
+  <label for="accountEmail">Email</label>
+  <input id="accountEmail" type="email" placeholder="you@example.com" autocomplete="email" style="width:100%">
+
+  <label for="accountPassword">Password</label>
+  <input id="accountPassword" type="password" placeholder="Your password" autocomplete="current-password" style="width:100%">
+
+  <div class="form-actions">
+    <button class="primary" type="button" id="signupBtn">Create account</button>
+    <button type="button" id="loginBtn">Log in</button>
+    <button type="button" id="resetPasswordBtn">Reset password</button>
+  </div>
+
+  <div id="newPasswordArea" hidden>
+    <label for="newPassword">New password</label>
+    <input id="newPassword" type="password" placeholder="Choose a new password" autocomplete="new-password" style="width:100%">
+    <div class="form-actions">
+      <button class="primary" type="button" id="saveNewPasswordBtn">Save new password</button>
+    </div>
+  </div>
+
+  <p id="accountStatus" class="muted" aria-live="polite">Checking account...</p>
+
+  <div class="form-actions">
+    <button type="button" id="syncBtn" disabled>Sync builds</button>
+    <button type="button" id="logoutBtn" disabled>Log out</button>
+  </div>
+  <small>Builds are private to the signed-in account. Keep exporting backups as an extra precaution.</small>
+</section>
+<div class="notice">Autosaves on this device. Export a JSON backup regularly to keep a copy of your library.</div>
 <section class="toolbar">
 <input id="search" placeholder="Search name, weapon, oath, stats…">
 <select id="category"><option value="">All categories</option><option>PVP</option><option>PVE</option><option>HYBRID</option><option>EXPERIMENTAL</option></select>
@@ -50,50 +82,457 @@ label{display:block;color:#b8cebf;font-size:13px;margin:8px 0 4px}.formgrid{disp
 <label for="importMode">When importing:</label><select id="importMode"><option value="merge">Merge — keep existing builds, skip duplicates</option><option value="replace">Replace — overwrite this device's library</option></select>
 </div><small>Supported JSON: an array of build objects or an object containing a “builds” array. CSV: first row must contain column names. Exported backups include IDs and timestamps.</small></section>
 </main>
-<script>
+<script type="module">
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.81.1';
+
+const supabase = createClient(
+  'https://ivibumgbdlqhnunvvalj.supabase.co',
+  'sb_publishable_8C5TWhb0Z5vFmpraqAJcjg_gH3FebRJ'
+);
+
 const STORE='deepwoken-build-vault-v2';
-const fields=['Build Name','Category','Weapon','Attunement','Oath','Race','Power','Strength','Fortitude','Agility','Intelligence','Willpower','Charisma','Weapon Stat','Elemental Stat','Playstyle','Builder Link','Source','Patch/Version','Status'];
+const fields=['Build Name','Category','Weapon','Frostdraw','Flamecharm','Thundercall','Galebreathe','Shadowcast','Ironsing','Bloodrend','Oath','Race','Power','Strength','Fortitude','Agility','Intelligence','Willpower','Charisma','Weapon Stat','Elemental Stat','Playstyle','Builder Link','Source','Patch/Version','Status'];
 const selectOptions={
-'Category':['PVP','PVE','HYBRID','EXPERIMENTAL'],
-'Attunement':['None','Flamecharm','Frostdraw','Thundercall','Galebreathe','Shadowcast','Ironsing','Bloodrend','Other'],
-'Oath':['None / Pathfinder','Oathless','Arcwarder','Bladeharper','Blightsurger','Blindseer','Chainwarden','Contractor','Dawnwalker','Fadetrimmer','Jetstriker','Linkstrider','Saintsworn','Saltchemist','Silentheart','Soulbreaker','Starkindred','Visionshaper','Other'],
-'Race':['Adret','Canor','Capra','Celtor','Etrean','Felinor','Ganymede','Gremor','Khan','Vesperian','Other'],
-'Status':['Current','Experimental','Outdated','Unverified']
+  'Category':['PVP','PVE','HYBRID','EXPERIMENTAL'],
+  'Oath':['None / Pathfinder','Oathless','Arcwarder','Bladeharper','Blightsurger','Blindseer','Chainwarden','Contractor','Dawnwalker','Fadetrimmer','Jetstriker','Linkstrider','Saintsworn','Saltchemist','Silentheart','Soulbreaker','Starkindred','Visionshaper','Other'],
+  'Race':['Adret','Canor','Capra','Celtor','Etrean','Felinor','Ganymede','Gremor','Khan','Vesperian','Other'],
+  'Status':['Current','Experimental','Outdated','Unverified']
 };
 const $=id=>document.getElementById(id);
-let builds=load(),editingId=null;
-function load(){try{const x=JSON.parse(localStorage.getItem(STORE)||'[]');return Array.isArray(x)?x:[]}catch{return []}}
-function persist(){try{localStorage.setItem(STORE,JSON.stringify(builds));return true}catch(e){alert('Could not save. Your browser storage may be full. Export a backup, then remove some data or clear unused browser storage.');return false}}
-function makeId(){return 'dw-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,9)}
-function normalize(b){const out={};fields.forEach(k=>out[k]=String(b?.[k]??'').trim());out.Notes=String(b?.Notes??'').trim();out.id=String(b?.id||makeId());out.createdAt=b?.createdAt||new Date().toISOString();out.updatedAt=new Date().toISOString();return out}
+let builds=load(),editingId=null,currentSession=null;
+
+function load(){
+  try{
+    const value=JSON.parse(localStorage.getItem(STORE)||'[]');
+    return Array.isArray(value)?value:[];
+  }catch{return []}
+}
+function persist(){
+  try{
+    localStorage.setItem(STORE,JSON.stringify(builds));
+    return true;
+  }catch{
+    alert('Could not save. Your browser storage may be full. Export a backup, then remove some data or clear unused browser storage.');
+    return false;
+  }
+}
+function makeId(){
+  return 'dw-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,9);
+}
+function normalize(build){
+  const out={};
+  fields.forEach(key=>out[key]=String(build?.[key]??'').trim());
+  out.Notes=String(build?.Notes??'').trim();
+  out.id=String(build?.id||makeId());
+  out.createdAt=build?.createdAt||new Date().toISOString();
+  out.updatedAt=new Date().toISOString();
+  return out;
+}
+
+/* Account controls */
+function accountMessage(message){$('accountStatus').textContent=message}
+function updateAccountUI(session){
+  currentSession=session||null;
+  const loggedIn=!!session?.user;
+  $('loginBtn').disabled=loggedIn;
+  $('signupBtn').disabled=loggedIn;
+  $('syncBtn').disabled=!loggedIn;
+  $('logoutBtn').disabled=!loggedIn;
+  $('accountEmail').disabled=loggedIn;
+  $('accountPassword').disabled=loggedIn;
+  if(loggedIn){
+    accountMessage('Logged in as '+session.user.email+'. Your builds remain local until you press Sync builds.');
+  }else{
+    accountMessage('Not logged in. Your existing builds are still saved on this device.');
+  }
+}
+async function createAccount(){
+  const email=$('accountEmail').value.trim();
+  const password=$('accountPassword').value;
+  if(!email||!password){accountMessage('Enter your email and password first.');return}
+  if(password.length<6){accountMessage('Use a password with at least 6 characters.');return}
+  $('signupBtn').disabled=true;
+  accountMessage('Creating account...');
+  const {data,error}=await supabase.auth.signUp({email,password});
+  $('signupBtn').disabled=false;
+  if(error){accountMessage(error.message);return}
+  if(data.session){
+    updateAccountUI(data.session);
+    accountMessage('Account created and signed in. Press Sync builds to upload this device’s builds.');
+  }else{
+    accountMessage('Account created. Check your email for the verification link, then log in here.');
+  }
+}
+async function loginAccount(){
+  const email=$('accountEmail').value.trim();
+  const password=$('accountPassword').value;
+  if(!email||!password){accountMessage('Enter your email and password first.');return}
+  $('loginBtn').disabled=true;
+  accountMessage('Logging in...');
+  const {data,error}=await supabase.auth.signInWithPassword({email,password});
+  $('loginBtn').disabled=false;
+  if(error){accountMessage(error.message);return}
+  updateAccountUI(data.session);
+}
+async function resetAccountPassword(){
+  const email=$('accountEmail').value.trim();
+  if(!email){accountMessage('Enter your email address first.');return}
+  accountMessage('Requesting password reset...');
+  const {error}=await supabase.auth.resetPasswordForEmail(email,{
+    redirectTo:window.location.origin+window.location.pathname
+  });
+  accountMessage(error?error.message:'If that address has an account, a password reset email has been sent.');
+}
+async function saveNewPassword(){
+  const password=$('newPassword').value;
+  if(password.length<6){accountMessage('Use a password with at least 6 characters.');return}
+  const {error}=await supabase.auth.updateUser({password});
+  if(error){accountMessage(error.message);return}
+  $('newPassword').value='';
+  $('newPasswordArea').hidden=true;
+  accountMessage('Password updated successfully.');
+}
+async function logoutAccount(){
+  const {error}=await supabase.auth.signOut();
+  if(error){accountMessage(error.message);return}
+  updateAccountUI(null);
+}
+function timestampOf(build){
+  const value=Date.parse(build?.updatedAt||build?.createdAt||0);
+  return Number.isFinite(value)?value:0;
+}
+async function syncBuilds(){
+  if(!currentSession?.user){accountMessage('Log in before syncing.');return}
+  $('syncBtn').disabled=true;
+  accountMessage('Syncing builds…');
+  try{
+    const {data:remoteRows,error}=await supabase
+      .from('builds')
+      .select('id,name,data,updated_at')
+      .order('updated_at',{ascending:true});
+    if(error)throw error;
+
+    const remoteByClientId=new Map();
+    for(const row of (remoteRows||[])){
+      const clientId=row.data&&row.data.id!=null?String(row.data.id):'';
+      if(clientId)remoteByClientId.set(clientId,row);
+    }
+
+    const merged=[];
+    const localIds=new Set();
+
+    for(const local of builds){
+      const clientId=String(local.id||'');
+      if(clientId)localIds.add(clientId);
+      const remote=remoteByClientId.get(clientId);
+
+      if(!remote){
+        const {error:insertError}=await supabase.from('builds').insert({
+          name:local['Build Name']||'Unnamed build',
+          data:local
+        });
+        if(insertError)throw insertError;
+        merged.push(local);
+        continue;
+      }
+
+      const remoteBuild=remote.data;
+      if(remoteBuild&&typeof remoteBuild==='object'&&timestampOf(remoteBuild)>timestampOf(local)){
+        merged.push(remoteBuild);
+      }else{
+        const {error:updateError}=await supabase.from('builds').update({
+          name:local['Build Name']||'Unnamed build',
+          data:local
+        }).eq('id',remote.id);
+        if(updateError)throw updateError;
+        merged.push(local);
+      }
+    }
+
+    for(const row of (remoteRows||[])){
+      const remoteBuild=row.data;
+      const clientId=remoteBuild&&remoteBuild.id!=null?String(remoteBuild.id):'';
+      if(remoteBuild&&typeof remoteBuild==='object'&&(!clientId||!localIds.has(clientId))){
+        merged.push(remoteBuild);
+        if(clientId)localIds.add(clientId);
+      }
+    }
+
+    builds=merged;
+    if(!persist())throw new Error('Cloud sync completed, but this device could not save the merged library locally. Export a backup and check browser storage.');
+    render();
+    accountMessage('Sync complete. '+builds.length+' build(s) are available on this device and in your account.');
+  }catch(error){
+    accountMessage('Sync failed: '+(error?.message||'Unknown error'));
+  }finally{
+    $('syncBtn').disabled=!currentSession?.user;
+  }
+}
+
+/* Build library */
 const form=$('buildForm'),formFields=$('formFields');
-fields.forEach(k=>{const wrap=document.createElement('div'),lab=document.createElement('label');lab.textContent=k;lab.htmlFor='f-'+k;let input;
-if(selectOptions[k]){input=document.createElement('select');selectOptions[k].forEach(v=>{const o=document.createElement('option');o.value=v;o.textContent=v;input.append(o)});if(k==='Category')input.value='PVP';if(k==='Status')input.value='Unverified'}
-else{input=document.createElement('input');input.type=k==='Builder Link'?'url':'text';input.placeholder=k==='Builder Link'?'https://…':''}
-input.id='f-'+k;input.name=k;wrap.append(lab,input);formFields.append(wrap)});
-function render(){const q=$('search').value.toLowerCase(),cat=$('category').value;const shown=builds.filter(b=>(!cat||b.Category===cat)&&Object.values(b).join(' ').toLowerCase().includes(q));$('cards').replaceChildren();$('empty').hidden=shown.length>0;$('stats').textContent=`${builds.length} saved build${builds.length===1?'':'s'} · showing ${shown.length}`;
-shown.forEach(b=>{const c=document.createElement('article');c.className='card';const title=document.createElement('h3');title.textContent=b['Build Name']||'Unnamed build';c.append(title);
-['Category','Weapon','Attunement','Oath','Race','Power','Status'].forEach(k=>{if(b[k]){const s=document.createElement('span');s.className='tag';s.textContent=k+': '+b[k];c.append(s)}});
-const detail=['Playstyle','Notes','Talents','Mantras','Source','Patch/Version'].filter(k=>b[k]).map(k=>k+': '+b[k]).join('\\n');if(detail){const p=document.createElement('p');p.className='muted';p.style.whiteSpace='pre-wrap';p.textContent=detail;c.append(p)}
-if(b['Builder Link']){try{const u=new URL(b['Builder Link']);if(['http:','https:'].includes(u.protocol)){const a=document.createElement('a');a.href=u.href;a.target='_blank';a.rel='noopener noreferrer';a.textContent='Open builder link ↗';c.append(a)}}catch{}}
-const meta=document.createElement('small');meta.textContent='Updated '+new Date(b.updatedAt||b.createdAt||Date.now()).toLocaleDateString();c.append(meta);
-const row=document.createElement('div');row.className='actions';const e=document.createElement('button'),d=document.createElement('button');e.textContent='Edit';d.textContent='Delete';d.className='danger';e.onclick=()=>openEditor(b.id);d.onclick=()=>{if(confirm('Delete “'+(b['Build Name']||'this build')+'”?')){builds=builds.filter(x=>x.id!==b.id);persist();render()}};row.append(e,d);c.append(row);$('cards').append(c)})}
-function openEditor(id=null){editingId=id;form.reset();$('editor').hidden=false;$('formTitle').textContent=id?'Edit build':'Add build';if(id){const b=builds.find(x=>x.id===id);if(!b)return;fields.forEach(k=>form.elements[k].value=b[k]||'');$('notes').value=b.Notes||''}else{form.elements.Category.value='PVP';form.elements.Status.value='Unverified'}window.scrollTo({top:0,behavior:'smooth'})}
-form.onsubmit=e=>{e.preventDefault();const b={};fields.forEach(k=>b[k]=form.elements[k].value.trim());b.Notes=$('notes').value.trim();if(b['Builder Link']){try{const u=new URL(b['Builder Link']);if(!['http:','https:'].includes(u.protocol))throw 0}catch{alert('Builder Link must be a valid http or https URL.');return}}
-if(!b['Build Name']){alert('Please enter a build name.');return}
-if(editingId){const i=builds.findIndex(x=>x.id===editingId);if(i>=0)builds[i]=normalize({...builds[i],...b,id:editingId})}else builds.unshift(normalize(b));
-if(persist()){$('editor').hidden=true;render()}};
-function download(name,content,type){const blob=new Blob([content],{type}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)}
-$('newBtn').onclick=()=>openEditor();$('cancelBtn').onclick=()=>$('editor').hidden=true;$('search').oninput=render;$('category').onchange=render;
-$('exportBtn').onclick=()=>download('deepwoken-build-vault-backup.json',JSON.stringify({project:'DEEPWOKEN BUILD VAULT',schemaVersion:2,exportedAt:new Date().toISOString(),builds},null,2),'application/json');
-function parseCSV(text){const rows=[];let row=[],cell='',quoted=false;for(let i=0;i<text.length;i++){const ch=text[i],next=text[i+1];if(ch==='"'&&quoted&&next==='"'){cell+='"';i++}else if(ch==='"'){quoted=!quoted}else if(ch===','&&!quoted){row.push(cell);cell=''}else if((ch==='\\n'||ch==='\\r')&&!quoted){if(ch==='\\r'&&next==='\\n')i++;row.push(cell);if(row.some(v=>v.trim()))rows.push(row);row=[];cell=''}else cell+=ch}row.push(cell);if(row.some(v=>v.trim()))rows.push(row);if(rows.length<2)throw Error('CSV needs a header and at least one data row.');const headers=rows.shift().map(x=>x.trim());return rows.map(r=>Object.fromEntries(headers.map((h,i)=>[h,r[i]??''])))}
-function isDuplicate(a,b){if(a.id&&b.id&&a.id===b.id)return true;const an=(a['Build Name']||'').trim().toLowerCase(),bn=(b['Build Name']||'').trim().toLowerCase();const al=(a['Builder Link']||'').trim().toLowerCase(),bl=(b['Builder Link']||'').trim().toLowerCase();return !!an&&an===bn&&al===bl}
-$('importFile').onchange=async e=>{const file=e.target.files[0];if(!file)return;try{const text=await file.text();let arr;if(file.name.toLowerCase().endsWith('.csv'))arr=parseCSV(text);else{const parsed=JSON.parse(text);arr=Array.isArray(parsed)?parsed:parsed.builds}
-if(!Array.isArray(arr))throw Error('No builds array found.');const incoming=arr.filter(x=>x&&typeof x==='object'&&!Array.isArray(x)).map(normalize);if(!incoming.length)throw Error('No valid build records found.');
-if($('importMode').value==='replace'){if(!confirm(`Replace your ${builds.length} saved builds with ${incoming.length} imported builds? Export a backup first if needed.`))return;builds=incoming}
-else{let added=0;incoming.forEach(b=>{if(!builds.some(existing=>isDuplicate(existing,b))){builds.push(b);added++}});alert(`Imported ${added} new build(s). ${incoming.length-added} duplicate(s) skipped.`)}
-if(persist())render()
-}catch(err){alert('Import failed: '+(err.message||'Please check the file format.'))}finally{e.target.value=''}};
-if('serviceWorker' in navigator && location.protocol!=='file:')window.addEventListener('load',()=>navigator.serviceWorker.register('./service-worker.js').catch(()=>{}));
+fields.forEach(key=>{
+  const wrap=document.createElement('div');
+  const label=document.createElement('label');
+  label.textContent=key;
+  label.htmlFor='f-'+key;
+  let input;
+  if(selectOptions[key]){
+    input=document.createElement('select');
+    selectOptions[key].forEach(value=>{
+      const option=document.createElement('option');
+      option.value=value;
+      option.textContent=value;
+      input.append(option);
+    });
+    if(key==='Category')input.value='PVP';
+    if(key==='Status')input.value='Unverified';
+  }else{
+    input=document.createElement('input');
+    input.type=key==='Builder Link'?'url':'text';
+    input.placeholder=key==='Builder Link'?'https://…':'';
+  }
+  input.id='f-'+key;
+  input.name=key;
+  wrap.append(label,input);
+  formFields.append(wrap);
+});
+
+function render(){
+  const query=$('search').value.toLowerCase();
+  const category=$('category').value;
+  const shown=builds.filter(build=>
+    (!category||build.Category===category)&&
+    Object.values(build).join(' ').toLowerCase().includes(query)
+  );
+  $('cards').replaceChildren();
+  $('empty').hidden=shown.length>0;
+  $('stats').textContent=`${builds.length} saved build${builds.length===1?'':'s'} · showing ${shown.length}`;
+
+  shown.forEach(build=>{
+    const card=document.createElement('article');
+    card.className='card';
+    const title=document.createElement('h3');
+    title.textContent=build['Build Name']||'Unnamed build';
+    card.append(title);
+
+    ['Category','Weapon','Oath','Race','Power','Status'].forEach(key=>{
+      if(build[key]){
+        const tag=document.createElement('span');
+        tag.className='tag';
+        tag.textContent=key+': '+build[key];
+        card.append(tag);
+      }
+    });
+
+    const detail=['Playstyle','Notes','Source','Patch/Version'].filter(key=>build[key])
+      .map(key=>key+': '+build[key]).join('\n');
+    if(detail){
+      const paragraph=document.createElement('p');
+      paragraph.className='muted';
+      paragraph.style.whiteSpace='pre-wrap';
+      paragraph.textContent=detail;
+      card.append(paragraph);
+    }
+
+    if(build['Builder Link']){
+      try{
+        const url=new URL(build['Builder Link']);
+        if(['http:','https:'].includes(url.protocol)){
+          const link=document.createElement('a');
+          link.href=url.href;
+          link.target='_blank';
+          link.rel='noopener noreferrer';
+          link.textContent='Open builder link ↗';
+          card.append(link);
+        }
+      }catch{}
+    }
+
+    const meta=document.createElement('small');
+    meta.textContent='Updated '+new Date(build.updatedAt||build.createdAt||Date.now()).toLocaleDateString();
+    card.append(meta);
+
+    const actions=document.createElement('div');
+    actions.className='actions';
+    const editButton=document.createElement('button');
+    const deleteButton=document.createElement('button');
+    editButton.textContent='Edit';
+    deleteButton.textContent='Delete';
+    deleteButton.className='danger';
+    editButton.onclick=()=>openEditor(build.id);
+    deleteButton.onclick=()=>{
+      if(confirm('Delete “'+(build['Build Name']||'this build')+'”?')){
+        builds=builds.filter(item=>item.id!==build.id);
+        persist();
+        render();
+      }
+    };
+    actions.append(editButton,deleteButton);
+    card.append(actions);
+    $('cards').append(card);
+  });
+}
+
+function openEditor(id=null){
+  editingId=id;
+  form.reset();
+  $('editor').hidden=false;
+  $('formTitle').textContent=id?'Edit build':'Add build';
+  if(id){
+    const build=builds.find(item=>item.id===id);
+    if(!build)return;
+    fields.forEach(key=>form.elements[key].value=build[key]||'');
+    $('notes').value=build.Notes||'';
+  }else{
+    form.elements.Category.value='PVP';
+    form.elements.Status.value='Unverified';
+  }
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+form.onsubmit=event=>{
+  event.preventDefault();
+  const build={};
+  fields.forEach(key=>build[key]=form.elements[key].value.trim());
+  build.Notes=$('notes').value.trim();
+
+  if(build['Builder Link']){
+    try{
+      const url=new URL(build['Builder Link']);
+      if(!['http:','https:'].includes(url.protocol))throw new Error();
+    }catch{
+      alert('Builder Link must be a valid http or https URL.');
+      return;
+    }
+  }
+  if(!build['Build Name']){
+    alert('Please enter a build name.');
+    return;
+  }
+
+  if(editingId){
+    const index=builds.findIndex(item=>item.id===editingId);
+    if(index>=0)builds[index]=normalize({...builds[index],...build,id:editingId});
+  }else{
+    builds.unshift(normalize(build));
+  }
+  if(persist()){
+    $('editor').hidden=true;
+    render();
+  }
+};
+
+function download(name,content,type){
+  const blob=new Blob([content],{type});
+  const url=URL.createObjectURL(blob);
+  const anchor=document.createElement('a');
+  anchor.href=url;
+  anchor.download=name;
+  anchor.click();
+  setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
+$('newBtn').onclick=()=>openEditor();
+$('cancelBtn').onclick=()=>$('editor').hidden=true;
+$('search').oninput=render;
+$('category').onchange=render;
+$('exportBtn').onclick=()=>download(
+  'deepwoken-build-vault-backup.json',
+  JSON.stringify({project:'DEEPWOKEN BUILD VAULT',schemaVersion:2,exportedAt:new Date().toISOString(),builds},null,2),
+  'application/json'
+);
+
+function parseCSV(text){
+  const rows=[];
+  let row=[],cell='',quoted=false;
+  for(let index=0;index<text.length;index++){
+    const character=text[index],next=text[index+1];
+    if(character==='"'&&quoted&&next==='"'){cell+='"';index++}
+    else if(character==='"'){quoted=!quoted}
+    else if(character===','&&!quoted){row.push(cell);cell=''}
+    else if((character==='\n'||character==='\r')&&!quoted){
+      if(character==='\r'&&next==='\n')index++;
+      row.push(cell);
+      if(row.some(value=>value.trim()))rows.push(row);
+      row=[];
+      cell='';
+    }else{cell+=character}
+  }
+  row.push(cell);
+  if(row.some(value=>value.trim()))rows.push(row);
+  if(rows.length<2)throw new Error('CSV needs a header and at least one data row.');
+  const headers=rows.shift().map(value=>value.trim());
+  return rows.map(values=>Object.fromEntries(headers.map((header,index)=>[header,values[index]??''])));
+}
+function isDuplicate(a,b){
+  if(a.id&&b.id&&a.id===b.id)return true;
+  const aName=(a['Build Name']||'').trim().toLowerCase();
+  const bName=(b['Build Name']||'').trim().toLowerCase();
+  const aLink=(a['Builder Link']||'').trim().toLowerCase();
+  const bLink=(b['Builder Link']||'').trim().toLowerCase();
+  return !!aName&&aName===bName&&aLink===bLink;
+}
+$('importFile').onchange=async event=>{
+  const file=event.target.files[0];
+  if(!file)return;
+  try{
+    const text=await file.text();
+    let incoming;
+    if(file.name.toLowerCase().endsWith('.csv')){
+      incoming=parseCSV(text);
+    }else{
+      const parsed=JSON.parse(text);
+      incoming=Array.isArray(parsed)?parsed:parsed.builds;
+    }
+    if(!Array.isArray(incoming))throw new Error('No builds array found.');
+    const valid=incoming.filter(item=>item&&typeof item==='object'&&!Array.isArray(item)).map(normalize);
+    if(!valid.length)throw new Error('No valid build records found.');
+
+    if($('importMode').value==='replace'){
+      if(!confirm(`Replace your ${builds.length} saved builds with ${valid.length} imported builds? Export a backup first if needed.`))return;
+      builds=valid;
+    }else{
+      let added=0;
+      valid.forEach(build=>{
+        if(!builds.some(existing=>isDuplicate(existing,build))){
+          builds.push(build);
+          added++;
+        }
+      });
+      alert(`Imported ${added} new build(s). ${valid.length-added} duplicate(s) skipped.`);
+    }
+    if(persist())render();
+  }catch(error){
+    alert('Import failed: '+(error.message||'Please check the file format.'));
+  }finally{
+    event.target.value='';
+  }
+};
+
+/* Wire up account actions and restore an existing login session. */
+$('signupBtn').onclick=createAccount;
+$('loginBtn').onclick=loginAccount;
+$('resetPasswordBtn').onclick=resetAccountPassword;
+$('saveNewPasswordBtn').onclick=saveNewPassword;
+$('logoutBtn').onclick=logoutAccount;
+$('syncBtn').onclick=syncBuilds;
+
+supabase.auth.onAuthStateChange((event,session)=>{
+  updateAccountUI(session);
+  if(event==='PASSWORD_RECOVERY'){
+    $('newPasswordArea').hidden=false;
+    accountMessage('Choose a new password below.');
+  }
+});
+
+const {data:{session},error:sessionError}=await supabase.auth.getSession();
+if(sessionError)accountMessage(sessionError.message);
+else updateAccountUI(session);
+
+if('serviceWorker' in navigator&&location.protocol!=='file:'){
+  window.addEventListener('load',()=>navigator.serviceWorker.register('./service-worker.js').catch(()=>{}));
+}
 render();
-</script></body></html>
+</script>
+</body>
+</html>
