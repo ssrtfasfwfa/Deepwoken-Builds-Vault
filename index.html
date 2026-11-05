@@ -1,4 +1,3 @@
-
 <!doctype html>
 <html lang="en">
 <head>
@@ -174,6 +173,17 @@ a{color:#c7e7cf;overflow-wrap:anywhere}
   .builder-top{grid-template-columns:1fr}
   .field-grid{grid-template-columns:1fr 1fr}
 }
+
+.page-tabs{
+  display:flex;gap:10px;justify-content:center;
+  flex-wrap:wrap;margin:18px auto;max-width:1100px
+}
+.page-tabs button{min-width:180px}
+.page-tabs button.active{
+  background:#356b48;border-color:var(--green)
+}
+#communityStatus{text-align:center;margin:10px 0 18px}
+#communityStatus[hidden]{display:none}
 </style>
 </head>
 
@@ -213,16 +223,24 @@ a{color:#c7e7cf;overflow-wrap:anywhere}
 
   <div class="form-actions">
     <button id="syncBtn" type="button" disabled>Sync builds</button>
+    <button id="importLegacyBtn" type="button" hidden>Import older local builds</button>
     <button id="logoutBtn" type="button" disabled>Log out</button>
   </div>
   <small>Your builds are private to your signed-in account.</small>
 </section>
 
 <div class="notice">
-  Your builds autosave on this device. Export a backup regularly.
+  My Vault is private to your account. Only builds you publish appear in Community Builds. Older builds stay on this device until you choose to import them.
 </div>
 
-<section class="toolbar">
+<nav class="page-tabs">
+  <button id="vaultTab" type="button" disabled>My Vault</button>
+  <button id="communityTab" type="button" class="active">Community Builds</button>
+</nav>
+
+<p id="communityStatus" class="muted" aria-live="polite">Loading community builds...</p>
+
+<section class="toolbar" id="toolbar">
   <input id="search" placeholder="Search builds, weapons, Oaths...">
   <select id="category">
     <option value="">All categories</option>
@@ -231,9 +249,9 @@ a{color:#c7e7cf;overflow-wrap:anywhere}
     <option>HYBRID</option>
     <option>EXPERIMENTAL</option>
   </select>
-  <button class="primary" id="newBtn">＋ Add build</button>
-  <button id="exportBtn">Export backup</button>
-  <div class="filewrap">
+  <button class="primary" id="newBtn" hidden>＋ Add build</button>
+  <button id="exportBtn" hidden>Export backup</button>
+  <div class="filewrap" id="importWrap" hidden>
     <input type="file" id="importFile" accept=".json,.csv,application/json,text/csv">
   </div>
 </section>
@@ -326,7 +344,7 @@ a{color:#c7e7cf;overflow-wrap:anywhere}
 <section class="grid" id="cards"></section>
 <div id="empty">Your vault is empty. Add your first build or import a backup.</div>
 
-<section class="panel" style="margin-top:16px">
+<section class="panel" id="importOptions" style="margin-top:16px">
   <strong>Import options</strong>
   <label for="importMode">When importing:</label>
   <select id="importMode">
@@ -349,6 +367,10 @@ const supabase=createClient(
 
 /* GAME RULES */
 const STORE='deepwoken-build-vault-v3';
+const VAULT_PREFIX=STORE+'-account-';
+let pageMode='community';
+let communityBuilds=[];
+let legacyBuilds=[];
 
 const MAX_ATTRIBUTE_POINTS=330;
 const MAX_TRAIT_POINTS=12;
@@ -417,18 +439,25 @@ function newShrineState(){
 let shrineState=newShrineState();
 
 /* LOCAL STORAGE */
-function loadBuilds(){
+function loadBuilds(userId){
+  if(!userId)return [];
+  try{
+    const saved=JSON.parse(localStorage.getItem(VAULT_PREFIX+userId)||'[]');
+    return Array.isArray(saved)?saved:[];
+  }catch{return [];}
+}
+
+function loadLegacyBuilds(){
   try{
     const saved=JSON.parse(localStorage.getItem(STORE)||'[]');
-    return Array.isArray(saved)?saved:[];
-  }catch{
-    return [];
-  }
+    return Array.isArray(saved)?saved.map(normalize):[];
+  }catch{return [];}
 }
 
 function persist(){
+  if(!currentSession?.user?.id)return false;
   try{
-    localStorage.setItem(STORE,JSON.stringify(builds));
+    localStorage.setItem(VAULT_PREFIX+currentSession.user.id,JSON.stringify(builds));
     return true;
   }catch{
     alert('Could not save. Export a backup and check your browser storage.');
@@ -725,7 +754,7 @@ function normalize(build){
   out.Notes=String(build?.Notes??'').trim();
   out.id=String(build?.id||makeId());
   out.createdAt=build?.createdAt||new Date().toISOString();
-  out.updatedAt=new Date().toISOString();
+  out.updatedAt=build?.updatedAt||build?.createdAt||new Date().toISOString();
 
   Object.assign(out,normalizeStats(out));
 
@@ -747,6 +776,8 @@ function normalize(build){
     ?normalizeStats(build.PostShrineStats)
     :null;
 
+  out.isPublic=Boolean(build?.isPublic);
+  out.cloudId=build?.cloudId||null;
   out.ShrineUsed=Boolean(build?.ShrineUsed);
   out.ShrineRefund=Math.max(0,Math.floor(Number(build?.ShrineRefund)||0));
 
@@ -964,6 +995,7 @@ $('buildForm').addEventListener('submit',event=>{
     });
 
   build.Notes=$('notes').value.trim();
+  build.updatedAt=new Date().toISOString();
 
   if(!build['Build Name']){
     alert('Please enter a build name.');
@@ -1018,19 +1050,25 @@ $('buildForm').addEventListener('submit',event=>{
 
 /* RENDER BUILD CARDS */
 function render(){
+  const community=pageMode==='community';
+  const source=community?communityBuilds:builds;
   const query=$('search').value.toLowerCase();
   const category=$('category').value;
 
-  const shown=builds.filter(build=>
+  const shown=source.filter(build=>
     (!category||build.Category===category)&&
     Object.values(build).join(' ').toLowerCase().includes(query)
   );
 
   $('cards').replaceChildren();
   $('empty').hidden=shown.length>0;
+  $('empty').textContent=community
+    ?'No community builds found yet. Be the first to publish one!'
+    :'Your My Vault is empty. Add a build or import a local backup.';
 
-  $('stats').textContent=
-    `${builds.length} saved build(s) · showing ${shown.length}`;
+  $('stats').textContent=community
+    ?`${communityBuilds.length} community build(s) · showing ${shown.length}`
+    :`${builds.length} private build(s) · showing ${shown.length}`;
 
   shown.forEach(build=>{
     const card=document.createElement('article');
@@ -1102,23 +1140,29 @@ function render(){
     const actions=document.createElement('div');
     actions.className='actions';
 
-    const edit=document.createElement('button');
-    edit.textContent='Edit';
-    edit.onclick=()=>openEditor(build.id);
+    if(community){
+      const tag=document.createElement('span');
+      tag.className='tag';
+      tag.textContent='Community build';
+      card.append(tag);
+    }else{
+      const edit=document.createElement('button');
+      edit.textContent='Edit';
+      edit.onclick=()=>openEditor(build.id);
 
-    const remove=document.createElement('button');
-    remove.textContent='Delete';
-    remove.className='danger';
+      const publish=document.createElement('button');
+      publish.textContent=build.isPublic?'Unpublish':'Publish to Community';
+      publish.onclick=()=>togglePublish(build.id);
 
-    remove.onclick=()=>{
-      if(confirm('Delete "'+(build['Build Name']||'this build')+'"?')){
-        builds=builds.filter(item=>item.id!==build.id);
-        if(persist())render();
-      }
-    };
+      const remove=document.createElement('button');
+      remove.textContent='Delete';
+      remove.className='danger';
+      remove.onclick=()=>deleteBuild(build.id);
 
-    actions.append(edit,remove);
-    card.append(actions);
+      actions.append(edit,publish,remove);
+      card.append(actions);
+    }
+
     $('cards').append(card);
   });
 }
@@ -1207,6 +1251,12 @@ $('importFile').onchange=async event=>{
   const file=event.target.files[0];
   if(!file)return;
 
+  if(!currentSession?.user){
+    alert('Log in to import builds into My Vault.');
+    event.target.value='';
+    return;
+  }
+
   try{
     const text=await file.text();
     let incoming;
@@ -1224,7 +1274,7 @@ $('importFile').onchange=async event=>{
 
     const valid=incoming
       .filter(item=>item&&typeof item==='object'&&!Array.isArray(item))
-      .map(normalize);
+      .map(item=>normalize({...item,isPublic:false,cloudId:null}));
 
     if(!valid.length){
       throw new Error('No valid build records found.');
@@ -1260,8 +1310,11 @@ function accountMessage(message){
 }
 
 function updateAccountUI(session){
+  const oldId=currentSession?.user?.id||null;
   currentSession=session||null;
-  const loggedIn=!!session?.user;
+
+  const userId=currentSession?.user?.id||null;
+  const loggedIn=!!userId;
 
   $('loginBtn').disabled=loggedIn;
   $('signupBtn').disabled=loggedIn;
@@ -1270,10 +1323,311 @@ function updateAccountUI(session){
   $('accountEmail').disabled=loggedIn;
   $('accountPassword').disabled=loggedIn;
 
+  if(oldId!==userId){
+    builds=loggedIn?loadBuilds(userId).map(normalize):[];
+    editingId=null;
+    $('editor').hidden=true;
+  }
+
+  pageMode=loggedIn?'vault':'community';
+  $('vaultTab').disabled=!loggedIn;
+  $('importLegacyBtn').hidden=!loggedIn||legacyBuilds.length===0;
+
   accountMessage(loggedIn
-    ?'Logged in as '+session.user.email+'. Press Sync builds to upload and download builds.'
-    :'Not logged in. Your builds remain saved on this device.'
+    ?'Logged in as '+currentSession.user.email+'. My Vault is private unless you publish a build.'
+    :'Not logged in. Community Builds are public. Log in to access My Vault.');
+
+  updatePageView();
+  render();
+}
+
+function updatePageView(){
+  const community=pageMode==='community';
+
+  $('toolbar').hidden=false;
+  $('newBtn').hidden=community||!currentSession?.user;
+  $('exportBtn').hidden=community||!currentSession?.user;
+  $('importWrap').hidden=community||!currentSession?.user;
+  $('importOptions').hidden=community||!currentSession?.user;
+  $('communityStatus').hidden=!community;
+
+  $('vaultTab').classList.toggle('active',!community);
+  $('communityTab').classList.toggle('active',community);
+}
+
+function showVault(){
+  if(!currentSession?.user){
+    accountMessage('Log in to open My Vault.');
+    return;
+  }
+
+  pageMode='vault';
+  $('editor').hidden=true;
+  updatePageView();
+  render();
+}
+
+function showCommunity(){
+  pageMode='community';
+  $('editor').hidden=true;
+  updatePageView();
+  render();
+  loadCommunityBuilds();
+}
+
+async function loadCommunityBuilds(){
+  $('communityStatus').textContent='Loading community builds...';
+
+  try{
+    const {data,error}=await supabase.from('builds')
+      .select('id,name,data,updated_at,is_public')
+      .eq('is_public',true)
+      .order('updated_at',{ascending:false});
+
+    if(error)throw error;
+
+    communityBuilds=(data||[]).map(row=>normalize({
+      ...row.data,
+      isPublic:true,
+      cloudId:row.id,
+      updatedAt:row.updated_at
+    }));
+
+    $('communityStatus').textContent=
+      communityBuilds.length+' published build(s). These builds are visible to everyone.';
+
+    if(pageMode==='community')render();
+  }catch(error){
+    $('communityStatus').textContent=
+      'Could not load community builds: '+(error.message||'Unknown error');
+  }
+}
+
+async function syncBuilds(){
+  if(!currentSession?.user){
+    accountMessage('Log in before syncing.');
+    return;
+  }
+
+  $('syncBtn').disabled=true;
+  accountMessage('Syncing your private My Vault...');
+
+  try{
+    const userId=currentSession.user.id;
+
+    const {data:rows,error}=await supabase.from('builds')
+      .select('id,name,data,updated_at,is_public')
+      .eq('user_id',userId)
+      .order('updated_at',{ascending:true});
+
+    if(error)throw error;
+
+    const byId=new Map();
+
+    (rows||[]).forEach(row=>{
+      const id=String(row.data?.id||'');
+      if(id)byId.set(id,row);
+    });
+
+    const merged=[];
+
+    for(const local of builds){
+      const row=byId.get(String(local.id));
+
+      if(!row){
+        const {data,error:insertError}=await supabase.from('builds')
+          .insert({
+            user_id:userId,
+            name:local['Build Name']||'Unnamed build',
+            data:local,
+            is_public:!!local.isPublic
+          })
+          .select('id')
+          .single();
+
+        if(insertError)throw insertError;
+
+        merged.push(normalize({...local,cloudId:data.id}));
+      }else{
+        const remoteTime=Date.parse(row.updated_at||row.data?.updatedAt||0)||0;
+        const localTime=Date.parse(local.updatedAt||local.createdAt||0)||0;
+
+        if(remoteTime>localTime){
+          merged.push(normalize({
+            ...row.data,
+            cloudId:row.id,
+            isPublic:!!row.is_public,
+            updatedAt:row.updated_at
+          }));
+        }else{
+          const saved={...local,cloudId:row.id};
+
+          const {error:updateError}=await supabase.from('builds')
+            .update({
+              name:local['Build Name']||'Unnamed build',
+              data:saved,
+              is_public:!!local.isPublic,
+              updated_at:local.updatedAt||new Date().toISOString()
+            })
+            .eq('id',row.id)
+            .eq('user_id',userId);
+
+          if(updateError)throw updateError;
+
+          merged.push(normalize(saved));
+        }
+      }
+    }
+
+    /* Also download cloud builds that are not on this device yet. */
+    const mergedIds=new Set(merged.map(item=>String(item.id)));
+
+    (rows||[]).forEach(row=>{
+      const id=String(row.data?.id||'');
+
+      if(row.data&&id&&!mergedIds.has(id)){
+        merged.push(normalize({
+          ...row.data,
+          cloudId:row.id,
+          isPublic:!!row.is_public,
+          updatedAt:row.updated_at
+        }));
+
+        mergedIds.add(id);
+      }
+    });
+
+    builds=merged;
+
+    if(!persist()){
+      throw new Error('Cloud sync finished, but this device could not save My Vault.');
+    }
+
+    render();
+    accountMessage('Sync complete. '+builds.length+' private build(s) in My Vault.');
+  }catch(error){
+    accountMessage('Sync failed: '+(error.message||'Unknown error'));
+  }finally{
+    $('syncBtn').disabled=!currentSession?.user;
+  }
+}
+
+async function togglePublish(id){
+  if(!currentSession?.user)return;
+
+  let build=builds.find(item=>item.id===id);
+  if(!build)return;
+
+  if(!build.cloudId){
+    await syncBuilds();
+    build=builds.find(item=>item.id===id);
+
+    if(!build?.cloudId){
+      accountMessage('Could not sync this build before publishing.');
+      return;
+    }
+  }
+
+  const next=!build.isPublic;
+  const previous=build.isPublic;
+  const stamp=new Date().toISOString();
+  const saved={...build,isPublic:next,updatedAt:stamp};
+
+  const {error}=await supabase.from('builds')
+    .update({
+      is_public:next,
+      data:saved,
+      updated_at:stamp,
+      name:build['Build Name']||'Unnamed build'
+    })
+    .eq('id',build.cloudId)
+    .eq('user_id',currentSession.user.id);
+
+  if(error){
+    accountMessage('Could not change publishing status: '+error.message);
+    return;
+  }
+
+  build.isPublic=next;
+  build.updatedAt=stamp;
+
+  if(!persist()){
+    build.isPublic=previous;
+    return;
+  }
+
+  render();
+
+  accountMessage(next
+    ?'Published to Community Builds.'
+    :'Unpublished. The build remains in My Vault.');
+
+  await loadCommunityBuilds();
+}
+
+async function deleteBuild(id){
+  const build=builds.find(item=>item.id===id);
+  if(!build)return;
+
+  if(!confirm('Delete "'+(build['Build Name']||'this build')+'" from My Vault?'))return;
+
+  try{
+    let query=supabase.from('builds').delete()
+      .eq('user_id',currentSession.user.id);
+
+    query=build.cloudId
+      ?query.eq('id',build.cloudId)
+      :query.contains('data',{id:build.id});
+
+    const {error}=await query;
+    if(error)throw error;
+
+    builds=builds.filter(item=>item.id!==id);
+
+    if(persist())render();
+  }catch(error){
+    accountMessage('Could not delete build: '+(error.message||'Unknown error'));
+  }
+}
+
+function importLegacyBuilds(){
+  if(!currentSession?.user)return;
+
+  legacyBuilds=loadLegacyBuilds();
+
+  if(!legacyBuilds.length){
+    accountMessage('No older local builds were found on this device.');
+    return;
+  }
+
+  const pending=legacyBuilds.filter(item=>
+    !builds.some(existing=>isDuplicate(existing,item))
   );
+
+  if(!pending.length){
+    accountMessage('All local backup builds are already in My Vault. Your backup is untouched.');
+    return;
+  }
+
+  if(!confirm(
+    'Import '+pending.length+' older build(s) into My Vault? The original local backup will remain untouched.'
+  ))return;
+
+  pending.forEach(item=>{
+    builds.unshift(normalize({
+      ...item,
+      id:makeId(),
+      isPublic:false,
+      cloudId:null
+    }));
+  });
+
+  if(persist()){
+    render();
+    accountMessage(
+      pending.length+' build(s) imported into My Vault. Press Sync builds to upload them.'
+    );
+  }
 }
 
 /* SIGN UP */
@@ -1306,6 +1660,7 @@ async function createAccount(){
 
     if(data.session){
       updateAccountUI(data.session);
+      await syncBuilds();
     }else{
       accountMessage('Account created! Check your email to confirm your account.');
     }
@@ -1335,6 +1690,7 @@ async function loginAccount(){
     if(error)throw error;
 
     updateAccountUI(data.session);
+    await syncBuilds();
   }catch(error){
     accountMessage(error.message||'Login failed.');
   }finally{
@@ -1388,6 +1744,8 @@ async function saveNewPassword(){
 }
 
 async function logoutAccount(){
+  if(currentSession?.user&&!persist())return;
+
   const {error}=await supabase.auth.signOut();
 
   if(error){
@@ -1398,101 +1756,11 @@ async function logoutAccount(){
   updateAccountUI(null);
 }
 
-/* CLOUD SYNC */
-function timestampOf(build){
-  const value=Date.parse(build?.updatedAt||build?.createdAt||0);
-  return Number.isFinite(value)?value:0;
-}
-
-async function syncBuilds(){
-  if(!currentSession?.user){
-    accountMessage('Log in before syncing.');
-    return;
-  }
-
-  $('syncBtn').disabled=true;
-  accountMessage('Syncing builds...');
-
-  try{
-    const {data:remoteRows,error}=await supabase
-      .from('builds')
-      .select('id,name,data,updated_at')
-      .order('updated_at',{ascending:true});
-
-    if(error)throw error;
-
-    const remoteByClientId=new Map();
-
-    for(const row of(remoteRows||[])){
-      const clientId=row.data?.id!=null?String(row.data.id):'';
-      if(clientId)remoteByClientId.set(clientId,row);
-    }
-
-    const merged=[];
-    const localIds=new Set();
-
-    for(const local of builds){
-      const clientId=String(local.id||'');
-      if(clientId)localIds.add(clientId);
-
-      const remote=remoteByClientId.get(clientId);
-
-      if(!remote){
-        const {error:insertError}=await supabase.from('builds').insert({
-          name:local['Build Name']||'Unnamed build',
-          data:local
-        });
-
-        if(insertError)throw insertError;
-
-        merged.push(local);
-        continue;
-      }
-
-      const remoteBuild=remote.data;
-
-      if(remoteBuild&&timestampOf(remoteBuild)>timestampOf(local)){
-        merged.push(normalize(remoteBuild));
-      }else{
-        const {error:updateError}=await supabase.from('builds').update({
-          name:local['Build Name']||'Unnamed build',
-          data:local
-        }).eq('id',remote.id);
-
-        if(updateError)throw updateError;
-
-        merged.push(local);
-      }
-    }
-
-    for(const row of(remoteRows||[])){
-      const remoteBuild=row.data;
-      const clientId=remoteBuild?.id!=null?String(remoteBuild.id):'';
-
-      if(remoteBuild&&typeof remoteBuild==='object'&&
-        (!clientId||!localIds.has(clientId))){
-        merged.push(normalize(remoteBuild));
-        if(clientId)localIds.add(clientId);
-      }
-    }
-
-    builds=merged;
-
-    if(!persist()){
-      throw new Error('Cloud sync completed but local storage could not save the results. Export a backup.');
-    }
-
-    render();
-    accountMessage('Sync complete. '+builds.length+' build(s) available.');
-  }catch(error){
-    accountMessage('Sync failed: '+(error.message||'Unknown error'));
-  }finally{
-    $('syncBtn').disabled=!currentSession?.user;
-  }
-}
-
 /* BUTTONS */
 $('newBtn').onclick=()=>openEditor();
+$('vaultTab').onclick=showVault;
+$('communityTab').onclick=showCommunity;
+$('importLegacyBtn').onclick=importLegacyBuilds;
 
 $('cancelBtn').onclick=()=>{
   $('editor').hidden=true;
@@ -1518,7 +1786,9 @@ $('syncBtn').onclick=syncBuilds;
 
 /* RESTORE LOGIN */
 supabase.auth.onAuthStateChange((event,session)=>{
-  updateAccountUI(session);
+  if(event!=='INITIAL_SESSION'){
+    updateAccountUI(session);
+  }
 
   if(event==='PASSWORD_RECOVERY'){
     $('newPasswordArea').hidden=false;
@@ -1529,8 +1799,8 @@ supabase.auth.onAuthStateChange((event,session)=>{
 /* START */
 createForm();
 
-builds=loadBuilds().map(normalize);
-persist();
+legacyBuilds=loadLegacyBuilds();
+builds=[];
 render();
 
 const {data:{session},error:sessionError}=await supabase.auth.getSession();
@@ -1540,6 +1810,8 @@ if(sessionError){
 }else{
   updateAccountUI(session);
 }
+
+loadCommunityBuilds();
 
 if('serviceWorker'in navigator&&location.protocol!=='file:'){
   window.addEventListener('load',()=>{
