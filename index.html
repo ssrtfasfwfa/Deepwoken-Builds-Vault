@@ -149,18 +149,41 @@ function updateAccountUI(session){
 async function createAccount(){
   const email=$('accountEmail').value.trim();
   const password=$('accountPassword').value;
-  if(!email||!password){accountMessage('Enter your email and password first.');return}
-  if(password.length<6){accountMessage('Use a password with at least 6 characters.');return}
+
+  if(!email||!password){
+    accountMessage('Enter your email and password first.');
+    return;
+  }
+
+  if(password.length<6){
+    accountMessage('Use a password with at least 6 characters.');
+    return;
+  }
+
   $('signupBtn').disabled=true;
   accountMessage('Creating account...');
-  const {data,error}=await supabase.auth.signUp({email,password});
+
+  const redirectUrl = window.location.origin + '/Deepwoken-Builds-Vault/';
+
+  const {data,error}=await supabase.auth.signUp({
+    email,
+    password,
+    options:{
+      emailRedirectTo:redirectUrl
+    }
+  });
+
   $('signupBtn').disabled=false;
-  if(error){accountMessage(error.message);return}
+
+  if(error){
+    accountMessage(error.message);
+    return;
+  }
+
   if(data.session){
     updateAccountUI(data.session);
-    accountMessage('Account created and signed in. Press Sync builds to upload this device’s builds.');
   }else{
-    accountMessage('Account created. Check your email for the verification link, then log in here.');
+    accountMessage('Account created! Check your email to confirm your account.');
   }
 }
 async function loginAccount(){
