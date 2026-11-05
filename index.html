@@ -1,341 +1,666 @@
+
 <!doctype html>
 <html lang="en">
 <head>
-<meta name="google-site-verification" content="9QK1sxz-TfuHMydiQYPIbZITMtgrKiGXkOVv3LprALo" />
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="theme-color" content="#07130f">
+<meta name="google-site-verification" content="9QK1sxz-TfuHMydiQYPIbZITMtgrKiGXkOVv3LprALo">
 <title>Deepwoken Build Vault</title>
 <link rel="manifest" href="manifest.webmanifest">
+
 <style>
-:root{color-scheme:dark;--bg:#06110e;--panel:rgba(9,25,20,.58);--line:rgba(190,232,211,.19);--gold:#d5e8d9;--text:#edf7f0;--muted:#a8c0b3;--green:#8ed5a8;--red:#e58b8b;--glass:rgba(10,29,23,.55)}
-*{box-sizing:border-box}html{min-height:100%;background:#06110e}body{margin:0;min-height:100vh;position:relative;isolation:isolate;overflow-x:hidden;background:radial-gradient(ellipse at 50% 8%,rgba(48,103,75,.42),transparent 38%),radial-gradient(ellipse at 8% 58%,rgba(29,83,59,.28),transparent 36%),radial-gradient(ellipse at 92% 72%,rgba(45,102,72,.24),transparent 34%),linear-gradient(145deg,#07130f 0%,#0a1c15 48%,#030a08 100%);color:var(--text);font:15px system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
-body:before{content:"";position:fixed;inset:0;z-index:-2;pointer-events:none;opacity:.52;background:linear-gradient(115deg,transparent 0 38%,rgba(170,224,190,.035) 39%,transparent 40% 62%,rgba(170,224,190,.025) 63%,transparent 64%),radial-gradient(ellipse at 50% 45%,transparent 0 28%,rgba(0,0,0,.35) 78%);}
-body:after{content:"✧";position:fixed;z-index:-1;pointer-events:none;right:-.11em;top:18vh;font-family:Georgia,serif;font-size:min(74vw,720px);line-height:1;color:rgba(182,226,196,.035);text-shadow:0 0 50px rgba(117,190,143,.12);transform:rotate(-13deg)}
-header{position:relative;overflow:hidden;padding:34px max(18px,calc((100% - 1180px)/2));background:linear-gradient(120deg,rgba(15,43,31,.78),rgba(7,22,17,.62));border-bottom:1px solid var(--line);box-shadow:0 18px 55px rgba(0,0,0,.22);backdrop-filter:blur(22px) saturate(135%);-webkit-backdrop-filter:blur(22px) saturate(135%)}header:after{content:"";position:absolute;width:270px;height:270px;right:8%;top:-190px;border:1px solid rgba(198,237,208,.12);border-radius:50%;box-shadow:0 0 0 22px rgba(198,237,208,.025),0 0 0 48px rgba(198,237,208,.02),0 0 70px rgba(95,171,121,.12);pointer-events:none}
-h1{margin:0;color:#e2f0e5;letter-spacing:clamp(2px,.7vw,7px);font:clamp(23px,5vw,39px) Georgia,"Times New Roman",serif;text-shadow:0 2px 24px rgba(156,220,176,.22)}header p{margin:9px 0 0;color:#b3cbbb;letter-spacing:.08em;font-size:12px;text-transform:uppercase}
-main{max-width:1180px;margin:22px auto;padding:0 16px}.panel,.toolbar{background:linear-gradient(135deg,rgba(24,52,39,.62),rgba(7,22,17,.58));border:1px solid var(--line);border-radius:17px;padding:15px;margin-bottom:15px;box-shadow:0 12px 38px rgba(0,0,0,.22),inset 0 1px 0 rgba(240,255,245,.07);backdrop-filter:blur(19px) saturate(140%);-webkit-backdrop-filter:blur(19px) saturate(140%)}
-.toolbar{display:grid;grid-template-columns:minmax(180px,1fr) minmax(145px,190px) auto auto auto;gap:9px;align-items:center}
-input,select,textarea,button{font:inherit;border:1px solid rgba(186,225,197,.2);border-radius:11px;padding:10px;background:rgba(3,15,11,.62);color:var(--text);min-width:0;box-shadow:inset 0 1px 0 rgba(255,255,255,.035)}
-input::placeholder,textarea::placeholder{color:#91aa9a}button{cursor:pointer;background:rgba(70,111,83,.38);transition:background .18s,border-color .18s,transform .18s}button:hover{background:rgba(105,157,119,.42);border-color:rgba(190,232,202,.42)}button:active{transform:translateY(1px)}button.primary{background:linear-gradient(135deg,rgba(101,155,112,.72),rgba(47,95,62,.72));border-color:rgba(190,232,202,.36);color:#f3fff5}button.danger{background:rgba(91,43,45,.55);border-color:rgba(210,120,120,.35)}.toolbar input{width:100%}
-.stats{color:var(--muted);font-size:13px;margin:0 0 12px}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,280px),1fr));gap:12px}
-.card{background:linear-gradient(145deg,rgba(22,49,36,.64),rgba(5,18,13,.66));border:1px solid rgba(183,226,195,.17);padding:15px;border-radius:15px;min-width:0;box-shadow:0 10px 30px rgba(0,0,0,.2),inset 0 1px 0 rgba(255,255,255,.06);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px)}.card h3{margin:0 0 9px;color:#dcefe0;overflow-wrap:anywhere;font-family:Georgia,serif;font-weight:500;font-size:20px}
-.tag{display:inline-block;border:1px solid rgba(177,222,190,.2);background:rgba(120,170,132,.09);border-radius:30px;padding:3px 8px;margin:2px;font-size:12px;color:#d3e7d8}
-.muted{color:var(--muted)}.card p{overflow-wrap:anywhere}.card a{color:#c7e7cf;display:inline-block;margin:5px 0}.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.actions button{padding:8px 12px}
-label{display:block;color:#b8cebf;font-size:13px;margin:8px 0 4px}.formgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(175px,1fr));gap:8px}.formgrid input,.formgrid select{width:100%}textarea{width:100%;min-height:90px;resize:vertical}.form-actions{display:flex;gap:9px;flex-wrap:wrap;margin-top:12px}
-#empty{color:var(--muted);padding:35px 15px;text-align:center;border:1px dashed rgba(185,224,195,.28);border-radius:14px;background:rgba(8,25,18,.32);backdrop-filter:blur(12px)}.importrow{display:flex;gap:9px;flex-wrap:wrap;align-items:center;margin-top:10px}.importrow label{margin:0}.importrow input[type=file]{max-width:240px}small{color:var(--muted)}.notice{padding:11px 13px;background:rgba(22,63,41,.46);border:1px solid rgba(122,192,143,.3);border-radius:12px;color:#c8e8d0;margin-bottom:12px;backdrop-filter:blur(14px)}
-#editor h2{font-family:Georgia,serif;font-weight:500;color:#e0efe3}
-@media(max-width:760px){header{padding:28px 18px}.toolbar{grid-template-columns:1fr 1fr}.toolbar #search{grid-column:1/-1}.toolbar button{width:100%}.toolbar .filewrap{grid-column:1/-1}.toolbar .filewrap input{width:100%;max-width:none}}
-@media(max-width:420px){main{padding:0 10px}.panel,.toolbar{padding:12px}.toolbar{grid-template-columns:1fr 1fr}.formgrid{grid-template-columns:1fr 1fr}.formgrid>div:first-child{grid-column:1/-1}.actions button{flex:1}}
-@media(prefers-reduced-motion:reduce){button{transition:none}}
-</style></head>
+:root{
+  color-scheme:dark;
+  --bg:#06110e;
+  --panel:#10251b;
+  --line:rgba(190,232,211,.2);
+  --text:#edf7f0;
+  --muted:#a8c0b3;
+  --green:#8ed5a8;
+  --red:#e58b8b;
+}
+*{box-sizing:border-box}
+body{
+  margin:0;min-height:100vh;
+  background:
+    radial-gradient(ellipse at 50% 5%,rgba(48,103,75,.4),transparent 40%),
+    linear-gradient(145deg,#07130f,#0a1c15 50%,#030a08);
+  color:var(--text);
+  font:15px system-ui,sans-serif;
+}
+header{
+  padding:32px 18px;
+  text-align:center;
+  background:rgba(15,43,31,.7);
+  border-bottom:1px solid var(--line);
+}
+h1{
+  margin:0;color:#e2f0e5;
+  letter-spacing:4px;
+  font:clamp(22px,5vw,38px) Georgia,serif;
+}
+header p{color:var(--muted);font-size:12px;letter-spacing:2px}
+main{max-width:1200px;margin:24px auto;padding:0 16px}
+.panel,.toolbar{
+  background:rgba(9,25,20,.8);
+  border:1px solid var(--line);
+  border-radius:15px;
+  padding:16px;margin-bottom:15px;
+}
+.toolbar{
+  display:grid;
+  grid-template-columns:1fr 170px auto auto;
+  gap:9px;align-items:center;
+}
+input,select,textarea,button{
+  font:inherit;color:var(--text);
+  background:#07150f;
+  border:1px solid var(--line);
+  border-radius:9px;
+  padding:10px;min-width:0;
+}
+input,select,textarea{width:100%}
+button{cursor:pointer;background:#254b34}
+button:hover{background:#356b48}
+button:disabled{opacity:.45;cursor:not-allowed}
+button.primary{background:#356b48}
+button.danger{background:#633638}
+label{display:block;color:#b8cebf;font-size:13px;margin:9px 0 5px}
+small,.muted{color:var(--muted)}
+.notice{
+  padding:12px;margin-bottom:14px;
+  border:1px solid rgba(122,192,143,.3);
+  border-radius:10px;background:rgba(22,63,41,.4);
+}
+.stats{color:var(--muted);font-size:13px}
+.grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(270px,1fr));
+  gap:12px;
+}
+.card{
+  background:rgba(9,25,20,.85);
+  border:1px solid var(--line);
+  padding:15px;border-radius:13px;
+  min-width:0;
+}
+.card h3{font:21px Georgia,serif;margin:0 0 10px;overflow-wrap:anywhere}
+.tag{
+  display:inline-block;padding:4px 8px;margin:2px;
+  border:1px solid var(--line);border-radius:20px;
+  font-size:12px;color:#d3e7d8;
+}
+.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.actions button{padding:8px 12px}
+.form-actions{display:flex;gap:9px;flex-wrap:wrap;margin-top:13px}
+.form-actions button{width:auto}
+#empty{
+  padding:35px;text-align:center;color:var(--muted);
+  border:1px dashed var(--line);border-radius:12px;
+}
+#editor h2{font-family:Georgia,serif;font-weight:500}
+.builder-top{
+  display:grid;grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:12px;margin-bottom:15px;
+}
+.builder-columns{
+  display:grid;grid-template-columns:1fr 1fr;
+  gap:14px;align-items:start;
+}
+.builder-section{
+  border:1px solid var(--line);
+  border-radius:12px;padding:13px;
+  margin-bottom:13px;background:rgba(5,18,13,.5);
+}
+.builder-section h3{
+  font:19px Georgia,serif;
+  color:#dcefe0;margin:0 0 8px;
+}
+.field-grid{
+  display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:5px 10px;
+}
+.field-grid .wide{grid-column:1/-1}
+.counter{
+  padding:11px;border-radius:10px;
+  background:rgba(45,91,58,.3);
+  border:1px solid var(--line);
+  margin:10px 0;font-size:13px;
+}
+.counter strong{color:var(--green)}
+.counter.warning{border-color:var(--red)}
+.power-display{
+  padding:12px;border:1px solid var(--line);
+  border-radius:10px;margin-top:10px;
+  background:rgba(45,91,58,.2);
+}
+.power-display strong{font-size:23px;color:var(--green)}
+#accountPanel input{width:100%}
+.filewrap input{max-width:240px}
+a{color:#c7e7cf;overflow-wrap:anywhere}
+@media(max-width:760px){
+  .toolbar{grid-template-columns:1fr 1fr}
+  .toolbar #search{grid-column:1/-1}
+  .builder-columns{grid-template-columns:1fr}
+  .builder-top{grid-template-columns:1fr 1fr}
+}
+@media(max-width:430px){
+  main{padding:0 10px}
+  .panel,.toolbar{padding:12px}
+  .builder-top{grid-template-columns:1fr}
+  .field-grid{grid-template-columns:1fr 1fr}
+}
+</style>
+</head>
+
 <body>
-<header><h1>⚡ DEEPWOKEN BUILD VAULT</h1><p>Your local build library · Add · Search · Edit · Import · Export</p></header>
+<header>
+  <h1>⚡ DEEPWOKEN BUILD VAULT</h1>
+  <p>CREATE · SAVE · SHARE · ORGANIZE</p>
+</header>
+
 <main>
+
 <section class="panel" id="accountPanel">
   <h2>Vault Account</h2>
   <p class="muted">Create an account to save your builds online and access them on other devices.</p>
 
   <label for="accountEmail">Email</label>
-  <input id="accountEmail" type="email" placeholder="you@example.com" autocomplete="email" style="width:100%">
+  <input id="accountEmail" type="email" placeholder="you@example.com" autocomplete="email">
 
   <label for="accountPassword">Password</label>
-  <input id="accountPassword" type="password" placeholder="Your password" autocomplete="current-password" style="width:100%">
+  <input id="accountPassword" type="password" placeholder="Your password" autocomplete="current-password">
 
   <div class="form-actions">
-    <button class="primary" type="button" id="signupBtn">Create account</button>
-    <button type="button" id="loginBtn">Log in</button>
-    <button type="button" id="resetPasswordBtn">Reset password</button>
+    <button class="primary" id="signupBtn" type="button">Create account</button>
+    <button id="loginBtn" type="button">Log in</button>
+    <button id="resetPasswordBtn" type="button">Reset password</button>
   </div>
 
   <div id="newPasswordArea" hidden>
     <label for="newPassword">New password</label>
-    <input id="newPassword" type="password" placeholder="Choose a new password" autocomplete="new-password" style="width:100%">
+    <input id="newPassword" type="password" autocomplete="new-password">
     <div class="form-actions">
-      <button class="primary" type="button" id="saveNewPasswordBtn">Save new password</button>
+      <button class="primary" id="saveNewPasswordBtn" type="button">Save new password</button>
     </div>
   </div>
 
   <p id="accountStatus" class="muted" aria-live="polite">Checking account...</p>
 
   <div class="form-actions">
-    <button type="button" id="syncBtn" disabled>Sync builds</button>
-    <button type="button" id="logoutBtn" disabled>Log out</button>
+    <button id="syncBtn" type="button" disabled>Sync builds</button>
+    <button id="logoutBtn" type="button" disabled>Log out</button>
   </div>
-  <small>Builds are private to the signed-in account. Keep exporting backups as an extra precaution.</small>
+  <small>Your builds are private to your signed-in account.</small>
 </section>
-<div class="notice">Autosaves on this device. Export a JSON backup regularly to keep a copy of your library.</div>
-<section class="toolbar">
-<input id="search" placeholder="Search name, weapon, oath, stats…">
-<select id="category"><option value="">All categories</option><option>PVP</option><option>PVE</option><option>HYBRID</option><option>EXPERIMENTAL</option></select>
-<button class="primary" id="newBtn">＋ Add build</button>
-<button id="exportBtn">Export backup</button>
-<div class="filewrap"><input type="file" id="importFile" accept=".json,.csv,application/json,text/csv" aria-label="Import JSON or CSV"></div>
-</section>
-<p class="stats" id="stats">0 saved builds</p>
-<section class="panel" id="editor" hidden>
-<h2 id="formTitle">Add build</h2>
-<form id="buildForm"><div class="formgrid" id="formFields"></div>
-<label for="notes">Talents, mantras, equipment & notes</label><textarea id="notes" name="Notes" placeholder="Add details, source notes, combo ideas, gear…"></textarea>
-<div class="form-actions"><button class="primary" type="submit">Save build</button><button type="button" id="cancelBtn">Cancel</button></div></form>
-</section>
-<section class="grid" id="cards"></section><div id="empty">Your vault is empty. Add your first build or import a JSON/CSV file.</div>
-<section class="panel" style="margin-top:16px"><strong>Import options</strong><div class="importrow">
-<label for="importMode">When importing:</label><select id="importMode"><option value="merge">Merge — keep existing builds, skip duplicates</option><option value="replace">Replace — overwrite this device's library</option></select>
-</div><small>Supported JSON: an array of build objects or an object containing a “builds” array. CSV: first row must contain column names. Exported backups include IDs and timestamps.</small></section>
-</main>
-<script type="module">
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.81.1';
 
-const supabase = createClient(
+<div class="notice">
+  Your builds autosave on this device. Export a backup regularly.
+</div>
+
+<section class="toolbar">
+  <input id="search" placeholder="Search builds, weapons, Oaths...">
+  <select id="category">
+    <option value="">All categories</option>
+    <option>PVP</option>
+    <option>PVE</option>
+    <option>HYBRID</option>
+    <option>EXPERIMENTAL</option>
+  </select>
+  <button class="primary" id="newBtn">＋ Add build</button>
+  <button id="exportBtn">Export backup</button>
+  <div class="filewrap">
+    <input type="file" id="importFile" accept=".json,.csv,application/json,text/csv">
+  </div>
+</section>
+
+<p class="stats" id="stats">0 saved builds</p>
+
+<section class="panel" id="editor" hidden>
+  <h2 id="formTitle">Add build</h2>
+
+  <form id="buildForm">
+    <div class="builder-top" id="basicFields"></div>
+
+    <div class="builder-columns">
+
+      <div>
+        <section class="builder-section">
+          <h3>Weapon investments</h3>
+          <p class="muted">Your weapon stat investments count toward the shared 330-point budget.</p>
+          <div class="field-grid" id="weaponFields"></div>
+        </section>
+
+        <section class="builder-section">
+          <h3>Attunements</h3>
+          <div class="field-grid" id="attunementFields"></div>
+        </section>
+      </div>
+
+      <div>
+        <section class="builder-section">
+          <h3>Character</h3>
+          <div class="field-grid" id="characterFields"></div>
+          <div class="power-display">
+            Calculated Power
+            <br>
+            <strong id="powerValue">0</strong>
+            <span class="muted">/ 20</span>
+          </div>
+        </section>
+
+        <section class="builder-section">
+          <h3>Attributes</h3>
+          <div class="field-grid" id="attributeFields"></div>
+        </section>
+
+        <section class="builder-section">
+          <h3>Traits</h3>
+          <p class="muted">Separate budget: 12 points total, maximum 6 per trait.</p>
+          <div class="field-grid" id="traitFields"></div>
+          <div class="counter" id="traitCounter"></div>
+        </section>
+      </div>
+    </div>
+
+    <div class="counter" id="attributeCounter"></div>
+
+    <section class="builder-section">
+      <h3>Build details</h3>
+      <div class="field-grid" id="detailFields"></div>
+      <label for="notes">Talents, mantras, equipment and notes</label>
+      <textarea id="notes" placeholder="Add talents, mantras, equipment, combos and other notes..."></textarea>
+    </section>
+
+    <div class="form-actions">
+      <button class="primary" type="submit">Save build</button>
+      <button type="button" id="cancelBtn">Cancel</button>
+    </div>
+  </form>
+</section>
+
+<section class="grid" id="cards"></section>
+<div id="empty">Your vault is empty. Add your first build or import a backup.</div>
+
+<section class="panel" style="margin-top:16px">
+  <strong>Import options</strong>
+  <label for="importMode">When importing:</label>
+  <select id="importMode">
+    <option value="merge">Merge — keep existing builds, skip duplicates</option>
+    <option value="replace">Replace — overwrite this device's library</option>
+  </select>
+  <small>JSON backups and CSV files are supported.</small>
+</section>
+
+</main>
+
+<script type="module">
+import {createClient} from 'https://esm.sh/@supabase/supabase-js@2.81.1';
+
+/* SUPABASE */
+const supabase=createClient(
   'https://ivibumgbdlqhnunvvalj.supabase.co',
   'sb_publishable_8C5TWhb0Z5vFmpraqAJcjg_gH3FebRJ'
 );
 
-const STORE='deepwoken-build-vault-v2';
-const fields=['Build Name','Category','Weapon','Frostdraw','Flamecharm','Thundercall','Galebreathe','Shadowcast','Ironsing','Bloodrend','Oath','Race','Power','Strength','Fortitude','Agility','Intelligence','Willpower','Charisma','Weapon Stat','Elemental Stat','Playstyle','Builder Link','Source','Patch/Version','Status'];
-const selectOptions={
+/* GAME RULES */
+const STORE='deepwoken-build-vault-v3';
+
+const MAX_ATTRIBUTE_POINTS=330;
+const MAX_TRAIT_POINTS=12;
+const MAX_ATTRIBUTE_VALUE=100;
+const MAX_TRAIT_VALUE=6;
+const MAX_POWER=20;
+
+const WEAPON_FIELDS=['Light','Medium','Heavy'];
+
+const ATTUNEMENT_FIELDS=[
+  'Frostdraw','Flamecharm','Thundercall','Galebreathe',
+  'Shadowcast','Ironsing','Bloodrend'
+];
+
+const CHARACTER_FIELDS=['Race','Oath'];
+
+const ATTRIBUTE_FIELDS=[
+  'Strength','Fortitude','Agility',
+  'Intelligence','Willpower','Charisma'
+];
+
+const TRAIT_FIELDS=[
+  'Vitality','Erudition','Songchant','Proficiency'
+];
+
+const INVESTMENT_FIELDS=[
+  ...WEAPON_FIELDS,
+  ...ATTUNEMENT_FIELDS,
+  ...ATTRIBUTE_FIELDS
+];
+
+const SELECT_OPTIONS={
   'Category':['PVP','PVE','HYBRID','EXPERIMENTAL'],
-  'Oath':['None / Pathfinder','Oathless','Arcwarder','Bladeharper','Blightsurger','Blindseer','Chainwarden','Contractor','Dawnwalker','Fadetrimmer','Jetstriker','Linkstrider','Saintsworn','Saltchemist','Silentheart','Soulbreaker','Starkindred','Visionshaper','Other'],
   'Race':['Adret','Canor','Capra','Celtor','Etrean','Felinor','Ganymede','Gremor','Khan','Vesperian','Other'],
+  'Oath':['None / Pathfinder','Oathless','Arcwarder','Bladeharper','Blightsurger','Blindseer','Chainwarden','Contractor','Dawnwalker','Fadetrimmer','Jetstriker','Linkstrider','Saintsworn','Saltchemist','Silentheart','Soulbreaker','Starkindred','Visionshaper','Other'],
   'Status':['Current','Experimental','Outdated','Unverified']
 };
-const $=id=>document.getElementById(id);
-let builds=load(),editingId=null,currentSession=null;
 
-function load(){
+const BASIC_FIELDS=['Build Name','Category','Weapon'];
+const DETAIL_FIELDS=['Weapon Stat','Elemental Stat','Playstyle','Builder Link','Source','Patch/Version','Status'];
+
+const $=id=>document.getElementById(id);
+const fieldId=key=>'field-'+key.replace(/[^a-zA-Z0-9]/g,'-');
+
+let builds=[];
+let editingId=null;
+let currentSession=null;
+
+/* LOCAL STORAGE */
+function loadBuilds(){
   try{
-    const value=JSON.parse(localStorage.getItem(STORE)||'[]');
-    return Array.isArray(value)?value:[];
-  }catch{return []}
+    const saved=JSON.parse(localStorage.getItem(STORE)||'[]');
+    return Array.isArray(saved)?saved:[];
+  }catch{
+    return [];
+  }
 }
+
 function persist(){
   try{
     localStorage.setItem(STORE,JSON.stringify(builds));
     return true;
   }catch{
-    alert('Could not save. Your browser storage may be full. Export a backup, then remove some data or clear unused browser storage.');
+    alert('Could not save. Export a backup and check your browser storage.');
     return false;
   }
 }
+
 function makeId(){
   return 'dw-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,9);
 }
-function normalize(build){
-  const out={};
-  fields.forEach(key=>out[key]=String(build?.[key]??'').trim());
-  out.Notes=String(build?.Notes??'').trim();
-  out.id=String(build?.id||makeId());
-  out.createdAt=build?.createdAt||new Date().toISOString();
-  out.updatedAt=new Date().toISOString();
-  return out;
+
+/* CALCULATIONS */
+function getSpent(){
+  return INVESTMENT_FIELDS.reduce(
+    (sum,key)=>sum+(Number($(fieldId(key))?.value)||0),0
+  );
 }
 
-/* Account controls */
-function accountMessage(message){$('accountStatus').textContent=message}
-function updateAccountUI(session){
-  currentSession=session||null;
-  const loggedIn=!!session?.user;
-  $('loginBtn').disabled=loggedIn;
-  $('signupBtn').disabled=loggedIn;
-  $('syncBtn').disabled=!loggedIn;
-  $('logoutBtn').disabled=!loggedIn;
-  $('accountEmail').disabled=loggedIn;
-  $('accountPassword').disabled=loggedIn;
-  if(loggedIn){
-    accountMessage('Logged in as '+session.user.email+'. Your builds remain local until you press Sync builds.');
-  }else{
-    accountMessage('Not logged in. Your existing builds are still saved on this device.');
-  }
-}
-async function createAccount(){
-  const email=$('accountEmail').value.trim();
-  const password=$('accountPassword').value;
-
-  if(!email||!password){
-    accountMessage('Enter your email and password first.');
-    return;
-  }
-
-  if(password.length<6){
-    accountMessage('Use a password with at least 6 characters.');
-    return;
-  }
-
-  $('signupBtn').disabled=true;
-  accountMessage('Creating account...');
-
-  const redirectUrl = window.location.origin + '/Deepwoken-Builds-Vault/';
-
-  const {data,error}=await supabase.auth.signUp({
-    email,
-    password,
-    options:{
-      emailRedirectTo:redirectUrl
-    }
-  });
-
-  $('signupBtn').disabled=false;
-
-  if(error){
-    accountMessage(error.message);
-    return;
-  }
-
-  if(data.session){
-    updateAccountUI(data.session);
-  }else{
-    accountMessage('Account created! Check your email to confirm your account.');
-  }
-}
-async function loginAccount(){
-  const email=$('accountEmail').value.trim();
-  const password=$('accountPassword').value;
-  if(!email||!password){accountMessage('Enter your email and password first.');return}
-  $('loginBtn').disabled=true;
-  accountMessage('Logging in...');
-  const {data,error}=await supabase.auth.signInWithPassword({email,password});
-  $('loginBtn').disabled=false;
-  if(error){accountMessage(error.message);return}
-  updateAccountUI(data.session);
-}
-async function resetAccountPassword(){
-  const email=$('accountEmail').value.trim();
-  if(!email){accountMessage('Enter your email address first.');return}
-  accountMessage('Requesting password reset...');
-  const {error}=await supabase.auth.resetPasswordForEmail(email,{
-    redirectTo:window.location.origin+window.location.pathname
-  });
-  accountMessage(error?error.message:'If that address has an account, a password reset email has been sent.');
-}
-async function saveNewPassword(){
-  const password=$('newPassword').value;
-  if(password.length<6){accountMessage('Use a password with at least 6 characters.');return}
-  const {error}=await supabase.auth.updateUser({password});
-  if(error){accountMessage(error.message);return}
-  $('newPassword').value='';
-  $('newPasswordArea').hidden=true;
-  accountMessage('Password updated successfully.');
-}
-async function logoutAccount(){
-  const {error}=await supabase.auth.signOut();
-  if(error){accountMessage(error.message);return}
-  updateAccountUI(null);
-}
-function timestampOf(build){
-  const value=Date.parse(build?.updatedAt||build?.createdAt||0);
-  return Number.isFinite(value)?value:0;
-}
-async function syncBuilds(){
-  if(!currentSession?.user){accountMessage('Log in before syncing.');return}
-  $('syncBtn').disabled=true;
-  accountMessage('Syncing builds…');
-  try{
-    const {data:remoteRows,error}=await supabase
-      .from('builds')
-      .select('id,name,data,updated_at')
-      .order('updated_at',{ascending:true});
-    if(error)throw error;
-
-    const remoteByClientId=new Map();
-    for(const row of (remoteRows||[])){
-      const clientId=row.data&&row.data.id!=null?String(row.data.id):'';
-      if(clientId)remoteByClientId.set(clientId,row);
-    }
-
-    const merged=[];
-    const localIds=new Set();
-
-    for(const local of builds){
-      const clientId=String(local.id||'');
-      if(clientId)localIds.add(clientId);
-      const remote=remoteByClientId.get(clientId);
-
-      if(!remote){
-        const {error:insertError}=await supabase.from('builds').insert({
-          name:local['Build Name']||'Unnamed build',
-          data:local
-        });
-        if(insertError)throw insertError;
-        merged.push(local);
-        continue;
-      }
-
-      const remoteBuild=remote.data;
-      if(remoteBuild&&typeof remoteBuild==='object'&&timestampOf(remoteBuild)>timestampOf(local)){
-        merged.push(remoteBuild);
-      }else{
-        const {error:updateError}=await supabase.from('builds').update({
-          name:local['Build Name']||'Unnamed build',
-          data:local
-        }).eq('id',remote.id);
-        if(updateError)throw updateError;
-        merged.push(local);
-      }
-    }
-
-    for(const row of (remoteRows||[])){
-      const remoteBuild=row.data;
-      const clientId=remoteBuild&&remoteBuild.id!=null?String(remoteBuild.id):'';
-      if(remoteBuild&&typeof remoteBuild==='object'&&(!clientId||!localIds.has(clientId))){
-        merged.push(remoteBuild);
-        if(clientId)localIds.add(clientId);
-      }
-    }
-
-    builds=merged;
-    if(!persist())throw new Error('Cloud sync completed, but this device could not save the merged library locally. Export a backup and check browser storage.');
-    render();
-    accountMessage('Sync complete. '+builds.length+' build(s) are available on this device and in your account.');
-  }catch(error){
-    accountMessage('Sync failed: '+(error?.message||'Unknown error'));
-  }finally{
-    $('syncBtn').disabled=!currentSession?.user;
-  }
+function getTraitSpent(){
+  return TRAIT_FIELDS.reduce(
+    (sum,key)=>sum+(Number($(fieldId(key))?.value)||0),0
+  );
 }
 
-/* Build library */
-const form=$('buildForm'),formFields=$('formFields');
-fields.forEach(key=>{
+function getPower(spent){
+  return Math.min(MAX_POWER,Math.floor(spent/15));
+}
+
+function updateCounters(){
+  const spent=getSpent();
+  const remaining=MAX_ATTRIBUTE_POINTS-spent;
+  const traits=getTraitSpent();
+  const traitRemaining=MAX_TRAIT_POINTS-traits;
+
+  $('attributeCounter').innerHTML=
+    `<strong>Attribute points:</strong> ${spent} / ${MAX_ATTRIBUTE_POINTS}
+     · <strong>Remaining:</strong> ${remaining}`;
+
+  $('traitCounter').innerHTML=
+    `<strong>Trait points:</strong> ${traits} / ${MAX_TRAIT_POINTS}
+     · <strong>Remaining:</strong> ${traitRemaining}`;
+
+  $('attributeCounter').classList.toggle('warning',remaining<0);
+  $('traitCounter').classList.toggle('warning',traitRemaining<0);
+
+  $('powerValue').textContent=getPower(spent);
+}
+
+/* KEEP INPUTS WITHIN THE BUDGET */
+function limitInvestment(input,key){
+  let value=Math.max(0,Math.floor(Number(input.value)||0));
+
+  const otherSpent=getSpent()-(Number(input.value)||0);
+  const remaining=Math.max(0,MAX_ATTRIBUTE_POINTS-otherSpent);
+
+  const individualMax=ATTRIBUTE_FIELDS.includes(key)
+    ?MAX_ATTRIBUTE_VALUE
+    :MAX_ATTRIBUTE_POINTS;
+
+  value=Math.min(value,individualMax,remaining);
+  input.value=String(value);
+  updateCounters();
+}
+
+function limitTrait(input){
+  let value=Math.max(0,Math.floor(Number(input.value)||0));
+  const otherSpent=getTraitSpent()-(Number(input.value)||0);
+  const remaining=Math.max(0,MAX_TRAIT_POINTS-otherSpent);
+
+  value=Math.min(value,MAX_TRAIT_VALUE,remaining);
+  input.value=String(value);
+  updateCounters();
+}
+
+/* FORM CREATION */
+function makeField(key,container,options={}){
   const wrap=document.createElement('div');
+  if(options.wide)wrap.className='wide';
+
   const label=document.createElement('label');
   label.textContent=key;
-  label.htmlFor='f-'+key;
+  label.htmlFor=fieldId(key);
+
   let input;
-  if(selectOptions[key]){
+
+  if(SELECT_OPTIONS[key]){
     input=document.createElement('select');
-    selectOptions[key].forEach(value=>{
+
+    SELECT_OPTIONS[key].forEach(value=>{
       const option=document.createElement('option');
       option.value=value;
       option.textContent=value;
       input.append(option);
     });
-    if(key==='Category')input.value='PVP';
-    if(key==='Status')input.value='Unverified';
   }else{
     input=document.createElement('input');
-    input.type=key==='Builder Link'?'url':'text';
-    input.placeholder=key==='Builder Link'?'https://…':'';
+
+    if(key==='Builder Link'){
+      input.type='url';
+      input.placeholder='https://...';
+    }else if(INVESTMENT_FIELDS.includes(key)||TRAIT_FIELDS.includes(key)){
+      input.type='number';
+      input.min='0';
+      input.step='1';
+
+      if(TRAIT_FIELDS.includes(key)){
+        input.max=String(MAX_TRAIT_VALUE);
+      }else{
+        input.max=String(
+          ATTRIBUTE_FIELDS.includes(key)
+            ?MAX_ATTRIBUTE_VALUE
+            :MAX_ATTRIBUTE_POINTS
+        );
+      }
+    }else{
+      input.type='text';
+    }
   }
-  input.id='f-'+key;
+
+  input.id=fieldId(key);
   input.name=key;
+
+  if(INVESTMENT_FIELDS.includes(key)){
+    input.addEventListener('input',()=>limitInvestment(input,key));
+  }
+
+  if(TRAIT_FIELDS.includes(key)){
+    input.addEventListener('input',()=>limitTrait(input));
+  }
+
   wrap.append(label,input);
-  formFields.append(wrap);
+  container.append(wrap);
+}
+
+function createForm(){
+  BASIC_FIELDS.forEach(key=>makeField(key,$('basicFields')));
+  WEAPON_FIELDS.forEach(key=>makeField(key,$('weaponFields')));
+  ATTUNEMENT_FIELDS.forEach(key=>makeField(key,$('attunementFields')));
+  CHARACTER_FIELDS.forEach(key=>makeField(key,$('characterFields')));
+  ATTRIBUTE_FIELDS.forEach(key=>makeField(key,$('attributeFields')));
+  TRAIT_FIELDS.forEach(key=>makeField(key,$('traitFields')));
+  DETAIL_FIELDS.forEach(key=>makeField(key,$('detailFields')));
+}
+
+/* BUILD NORMALIZATION */
+function normalize(build){
+  const out={};
+
+  [...BASIC_FIELDS,...WEAPON_FIELDS,...ATTUNEMENT_FIELDS,
+    ...CHARACTER_FIELDS,...ATTRIBUTE_FIELDS,...TRAIT_FIELDS,
+    ...DETAIL_FIELDS].forEach(key=>{
+      out[key]=String(build?.[key]??'').trim();
+    });
+
+  out.Notes=String(build?.Notes??'').trim();
+  out.id=String(build?.id||makeId());
+  out.createdAt=build?.createdAt||new Date().toISOString();
+  out.updatedAt=new Date().toISOString();
+
+  let remaining=MAX_ATTRIBUTE_POINTS;
+
+  INVESTMENT_FIELDS.forEach(key=>{
+    const value=Math.max(0,Math.floor(Number(out[key])||0));
+    const max=ATTRIBUTE_FIELDS.includes(key)
+      ?MAX_ATTRIBUTE_VALUE
+      :MAX_ATTRIBUTE_POINTS;
+
+    const allowed=Math.min(value,max,remaining);
+    out[key]=String(allowed);
+    remaining-=allowed;
+  });
+
+  remaining=MAX_TRAIT_POINTS;
+
+  TRAIT_FIELDS.forEach(key=>{
+    const value=Math.max(0,Math.floor(Number(out[key])||0));
+    const allowed=Math.min(value,MAX_TRAIT_VALUE,remaining);
+    out[key]=String(allowed);
+    remaining-=allowed;
+  });
+
+  const spent=INVESTMENT_FIELDS.reduce(
+    (sum,key)=>sum+(Number(out[key])||0),0
+  );
+
+  out.Power=String(getPower(spent));
+  return out;
+}
+
+/* EDITOR */
+function clearEditor(){
+  $('buildForm').reset();
+  $('notes').value='';
+
+  $('category').value=$('category').value;
+
+  updateCounters();
+}
+
+function openEditor(id=null){
+  editingId=id;
+  $('buildForm').reset();
+  $('notes').value='';
+
+  $('editor').hidden=false;
+  $('formTitle').textContent=id?'Edit build':'Add build';
+
+  if(id){
+    const build=builds.find(item=>item.id===id);
+    if(!build)return;
+
+    [...BASIC_FIELDS,...WEAPON_FIELDS,...ATTUNEMENT_FIELDS,
+      ...CHARACTER_FIELDS,...ATTRIBUTE_FIELDS,...TRAIT_FIELDS,
+      ...DETAIL_FIELDS].forEach(key=>{
+        const input=$(fieldId(key));
+        if(input)input.value=build[key]??'';
+      });
+
+    $('notes').value=build.Notes||'';
+  }else{
+    $(fieldId('Category')).value='PVP';
+    $(fieldId('Status')).value='Unverified';
+  }
+
+  updateCounters();
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+/* SAVE */
+$('buildForm').addEventListener('submit',event=>{
+  event.preventDefault();
+
+  const build={};
+
+  [...BASIC_FIELDS,...WEAPON_FIELDS,...ATTUNEMENT_FIELDS,
+    ...CHARACTER_FIELDS,...ATTRIBUTE_FIELDS,...TRAIT_FIELDS,
+    ...DETAIL_FIELDS].forEach(key=>{
+      build[key]=$(fieldId(key)).value.trim();
+    });
+
+  build.Notes=$('notes').value.trim();
+
+  if(!build['Build Name']){
+    alert('Please enter a build name.');
+    return;
+  }
+
+  if(build['Builder Link']){
+    try{
+      const url=new URL(build['Builder Link']);
+      if(!['http:','https:'].includes(url.protocol))throw new Error();
+    }catch{
+      alert('Builder Link must be a valid http or https URL.');
+      return;
+    }
+  }
+
+  if(editingId){
+    const index=builds.findIndex(item=>item.id===editingId);
+    if(index>=0){
+      build.id=editingId;
+      build.createdAt=builds[index].createdAt;
+      builds[index]=normalize({...builds[index],...build});
+    }
+  }else{
+    builds.unshift(normalize(build));
+  }
+
+  if(persist()){
+    $('editor').hidden=true;
+    render();
+  }
 });
 
+/* RENDER BUILD CARDS */
 function render(){
   const query=$('search').value.toLowerCase();
   const category=$('category').value;
+
   const shown=builds.filter(build=>
     (!category||build.Category===category)&&
     Object.values(build).join(' ').toLowerCase().includes(query)
   );
+
   $('cards').replaceChildren();
   $('empty').hidden=shown.length>0;
-  $('stats').textContent=`${builds.length} saved build${builds.length===1?'':'s'} · showing ${shown.length}`;
+
+  $('stats').textContent=
+    `${builds.length} saved build(s) · showing ${shown.length}`;
 
   shown.forEach(build=>{
     const card=document.createElement('article');
     card.className='card';
+
     const title=document.createElement('h3');
     title.textContent=build['Build Name']||'Unnamed build';
     card.append(title);
@@ -349,8 +674,22 @@ function render(){
       }
     });
 
-    const detail=['Playstyle','Notes','Source','Patch/Version'].filter(key=>build[key])
+    const spent=INVESTMENT_FIELDS.reduce(
+      (sum,key)=>sum+(Number(build[key])||0),0
+    );
+
+    const investment=document.createElement('p');
+    investment.className='muted';
+    investment.textContent=
+      `Investment: ${spent}/${MAX_ATTRIBUTE_POINTS} · Traits: ${
+        TRAIT_FIELDS.reduce((sum,key)=>sum+(Number(build[key])||0),0)
+      }/${MAX_TRAIT_POINTS}`;
+    card.append(investment);
+
+    const detail=['Playstyle','Weapon Stat','Elemental Stat',
+      'Notes','Source','Patch/Version'].filter(key=>build[key])
       .map(key=>key+': '+build[key]).join('\n');
+
     if(detail){
       const paragraph=document.createElement('p');
       paragraph.className='muted';
@@ -374,79 +713,35 @@ function render(){
     }
 
     const meta=document.createElement('small');
-    meta.textContent='Updated '+new Date(build.updatedAt||build.createdAt||Date.now()).toLocaleDateString();
+    meta.textContent='Updated '+new Date(
+      build.updatedAt||build.createdAt||Date.now()
+    ).toLocaleDateString();
     card.append(meta);
 
     const actions=document.createElement('div');
     actions.className='actions';
-    const editButton=document.createElement('button');
-    const deleteButton=document.createElement('button');
-    editButton.textContent='Edit';
-    deleteButton.textContent='Delete';
-    deleteButton.className='danger';
-    editButton.onclick=()=>openEditor(build.id);
-    deleteButton.onclick=()=>{
-      if(confirm('Delete “'+(build['Build Name']||'this build')+'”?')){
+
+    const edit=document.createElement('button');
+    edit.textContent='Edit';
+    edit.onclick=()=>openEditor(build.id);
+
+    const remove=document.createElement('button');
+    remove.textContent='Delete';
+    remove.className='danger';
+    remove.onclick=()=>{
+      if(confirm('Delete "'+(build['Build Name']||'this build')+'"?')){
         builds=builds.filter(item=>item.id!==build.id);
-        persist();
-        render();
+        if(persist())render();
       }
     };
-    actions.append(editButton,deleteButton);
+
+    actions.append(edit,remove);
     card.append(actions);
     $('cards').append(card);
   });
 }
 
-function openEditor(id=null){
-  editingId=id;
-  form.reset();
-  $('editor').hidden=false;
-  $('formTitle').textContent=id?'Edit build':'Add build';
-  if(id){
-    const build=builds.find(item=>item.id===id);
-    if(!build)return;
-    fields.forEach(key=>form.elements[key].value=build[key]||'');
-    $('notes').value=build.Notes||'';
-  }else{
-    form.elements.Category.value='PVP';
-    form.elements.Status.value='Unverified';
-  }
-  window.scrollTo({top:0,behavior:'smooth'});
-}
-
-form.onsubmit=event=>{
-  event.preventDefault();
-  const build={};
-  fields.forEach(key=>build[key]=form.elements[key].value.trim());
-  build.Notes=$('notes').value.trim();
-
-  if(build['Builder Link']){
-    try{
-      const url=new URL(build['Builder Link']);
-      if(!['http:','https:'].includes(url.protocol))throw new Error();
-    }catch{
-      alert('Builder Link must be a valid http or https URL.');
-      return;
-    }
-  }
-  if(!build['Build Name']){
-    alert('Please enter a build name.');
-    return;
-  }
-
-  if(editingId){
-    const index=builds.findIndex(item=>item.id===editingId);
-    if(index>=0)builds[index]=normalize({...builds[index],...build,id:editingId});
-  }else{
-    builds.unshift(normalize(build));
-  }
-  if(persist()){
-    $('editor').hidden=true;
-    render();
-  }
-};
-
+/* EXPORT */
 function download(name,content,type){
   const blob=new Blob([content],{type});
   const url=URL.createObjectURL(blob);
@@ -456,84 +751,356 @@ function download(name,content,type){
   anchor.click();
   setTimeout(()=>URL.revokeObjectURL(url),1000);
 }
-$('newBtn').onclick=()=>openEditor();
-$('cancelBtn').onclick=()=>$('editor').hidden=true;
-$('search').oninput=render;
-$('category').onchange=render;
-$('exportBtn').onclick=()=>download(
-  'deepwoken-build-vault-backup.json',
-  JSON.stringify({project:'DEEPWOKEN BUILD VAULT',schemaVersion:2,exportedAt:new Date().toISOString(),builds},null,2),
-  'application/json'
-);
 
+$('exportBtn').onclick=()=>{
+  download(
+    'deepwoken-build-vault-backup.json',
+    JSON.stringify({
+      project:'DEEPWOKEN BUILD VAULT',
+      schemaVersion:3,
+      exportedAt:new Date().toISOString(),
+      builds
+    },null,2),
+    'application/json'
+  );
+};
+
+/* IMPORT */
 function parseCSV(text){
   const rows=[];
   let row=[],cell='',quoted=false;
-  for(let index=0;index<text.length;index++){
-    const character=text[index],next=text[index+1];
-    if(character==='"'&&quoted&&next==='"'){cell+='"';index++}
-    else if(character==='"'){quoted=!quoted}
-    else if(character===','&&!quoted){row.push(cell);cell=''}
-    else if((character==='\n'||character==='\r')&&!quoted){
-      if(character==='\r'&&next==='\n')index++;
+
+  for(let i=0;i<text.length;i++){
+    const c=text[i],next=text[i+1];
+
+    if(c==='"'&&quoted&&next==='"'){
+      cell+='"';i++;
+    }else if(c==='"'){
+      quoted=!quoted;
+    }else if(c===','&&!quoted){
+      row.push(cell);cell='';
+    }else if((c==='\n'||c==='\r')&&!quoted){
+      if(c==='\r'&&next==='\n')i++;
       row.push(cell);
-      if(row.some(value=>value.trim()))rows.push(row);
-      row=[];
-      cell='';
-    }else{cell+=character}
+      if(row.some(v=>v.trim()))rows.push(row);
+      row=[];cell='';
+    }else{
+      cell+=c;
+    }
   }
+
   row.push(cell);
-  if(row.some(value=>value.trim()))rows.push(row);
+  if(row.some(v=>v.trim()))rows.push(row);
+
   if(rows.length<2)throw new Error('CSV needs a header and at least one data row.');
-  const headers=rows.shift().map(value=>value.trim());
-  return rows.map(values=>Object.fromEntries(headers.map((header,index)=>[header,values[index]??''])));
+
+  const headers=rows.shift().map(v=>v.trim());
+
+  return rows.map(values=>
+    Object.fromEntries(headers.map((header,index)=>[
+      header,values[index]??''
+    ]))
+  );
 }
+
 function isDuplicate(a,b){
   if(a.id&&b.id&&a.id===b.id)return true;
-  const aName=(a['Build Name']||'').trim().toLowerCase();
-  const bName=(b['Build Name']||'').trim().toLowerCase();
-  const aLink=(a['Builder Link']||'').trim().toLowerCase();
-  const bLink=(b['Builder Link']||'').trim().toLowerCase();
-  return !!aName&&aName===bName&&aLink===bLink;
+
+  const nameA=(a['Build Name']||'').trim().toLowerCase();
+  const nameB=(b['Build Name']||'').trim().toLowerCase();
+  const linkA=(a['Builder Link']||'').trim().toLowerCase();
+  const linkB=(b['Builder Link']||'').trim().toLowerCase();
+
+  return !!nameA&&nameA===nameB&&linkA===linkB;
 }
+
 $('importFile').onchange=async event=>{
   const file=event.target.files[0];
   if(!file)return;
+
   try{
     const text=await file.text();
     let incoming;
+
     if(file.name.toLowerCase().endsWith('.csv')){
       incoming=parseCSV(text);
     }else{
       const parsed=JSON.parse(text);
       incoming=Array.isArray(parsed)?parsed:parsed.builds;
     }
+
     if(!Array.isArray(incoming))throw new Error('No builds array found.');
-    const valid=incoming.filter(item=>item&&typeof item==='object'&&!Array.isArray(item)).map(normalize);
+
+    const valid=incoming
+      .filter(item=>item&&typeof item==='object'&&!Array.isArray(item))
+      .map(normalize);
+
     if(!valid.length)throw new Error('No valid build records found.');
 
     if($('importMode').value==='replace'){
-      if(!confirm(`Replace your ${builds.length} saved builds with ${valid.length} imported builds? Export a backup first if needed.`))return;
+      if(!confirm(`Replace ${builds.length} builds with ${valid.length} imported builds?`))return;
       builds=valid;
     }else{
       let added=0;
+
       valid.forEach(build=>{
         if(!builds.some(existing=>isDuplicate(existing,build))){
           builds.push(build);
           added++;
         }
       });
-      alert(`Imported ${added} new build(s). ${valid.length-added} duplicate(s) skipped.`);
+
+      alert(`Imported ${added} build(s). ${valid.length-added} duplicate(s) skipped.`);
     }
+
     if(persist())render();
   }catch(error){
-    alert('Import failed: '+(error.message||'Please check the file format.'));
+    alert('Import failed: '+(error.message||'Check the file format.'));
   }finally{
     event.target.value='';
   }
 };
 
-/* Wire up account actions and restore an existing login session. */
+/* ACCOUNT STATUS */
+function accountMessage(message){
+  $('accountStatus').textContent=message;
+}
+
+function updateAccountUI(session){
+  currentSession=session||null;
+  const loggedIn=!!session?.user;
+
+  $('loginBtn').disabled=loggedIn;
+  $('signupBtn').disabled=loggedIn;
+  $('syncBtn').disabled=!loggedIn;
+  $('logoutBtn').disabled=!loggedIn;
+  $('accountEmail').disabled=loggedIn;
+  $('accountPassword').disabled=loggedIn;
+
+  accountMessage(loggedIn
+    ?'Logged in as '+session.user.email+'. Press Sync builds to upload and download builds.'
+    :'Not logged in. Your builds remain saved on this device.'
+  );
+}
+
+/* SIGN UP */
+async function createAccount(){
+  const email=$('accountEmail').value.trim();
+  const password=$('accountPassword').value;
+
+  if(!email||!password){
+    accountMessage('Enter your email and password first.');
+    return;
+  }
+
+  if(password.length<6){
+    accountMessage('Use a password with at least 6 characters.');
+    return;
+  }
+
+  $('signupBtn').disabled=true;
+  accountMessage('Creating account...');
+
+  try{
+    const redirectUrl=window.location.origin+'/Deepwoken-Builds-Vault/';
+
+    const {data,error}=await supabase.auth.signUp({
+      email,password,
+      options:{emailRedirectTo:redirectUrl}
+    });
+
+    if(error)throw error;
+
+    if(data.session){
+      updateAccountUI(data.session);
+    }else{
+      accountMessage('Account created! Check your email to confirm your account.');
+    }
+  }catch(error){
+    accountMessage(error.message||'Could not create account.');
+  }finally{
+    $('signupBtn').disabled=!!currentSession?.user;
+  }
+}
+
+/* LOGIN */
+async function loginAccount(){
+  const email=$('accountEmail').value.trim();
+  const password=$('accountPassword').value;
+
+  if(!email||!password){
+    accountMessage('Enter your email and password first.');
+    return;
+  }
+
+  $('loginBtn').disabled=true;
+  accountMessage('Logging in...');
+
+  try{
+    const {data,error}=await supabase.auth.signInWithPassword({email,password});
+    if(error)throw error;
+    updateAccountUI(data.session);
+  }catch(error){
+    accountMessage(error.message||'Login failed.');
+  }finally{
+    $('loginBtn').disabled=!!currentSession?.user;
+  }
+}
+
+/* PASSWORD RESET */
+async function resetAccountPassword(){
+  const email=$('accountEmail').value.trim();
+
+  if(!email){
+    accountMessage('Enter your email address first.');
+    return;
+  }
+
+  accountMessage('Requesting password reset...');
+
+  try{
+    const {error}=await supabase.auth.resetPasswordForEmail(email,{
+      redirectTo:window.location.origin+window.location.pathname
+    });
+
+    if(error)throw error;
+    accountMessage('If that address has an account, a password reset email has been sent.');
+  }catch(error){
+    accountMessage(error.message||'Could not request password reset.');
+  }
+}
+
+async function saveNewPassword(){
+  const password=$('newPassword').value;
+
+  if(password.length<6){
+    accountMessage('Use a password with at least 6 characters.');
+    return;
+  }
+
+  try{
+    const {error}=await supabase.auth.updateUser({password});
+    if(error)throw error;
+
+    $('newPassword').value='';
+    $('newPasswordArea').hidden=true;
+    accountMessage('Password updated successfully.');
+  }catch(error){
+    accountMessage(error.message||'Could not update password.');
+  }
+}
+
+async function logoutAccount(){
+  const {error}=await supabase.auth.signOut();
+
+  if(error){
+    accountMessage(error.message);
+    return;
+  }
+
+  updateAccountUI(null);
+}
+
+/* CLOUD SYNC */
+function timestampOf(build){
+  const value=Date.parse(build?.updatedAt||build?.createdAt||0);
+  return Number.isFinite(value)?value:0;
+}
+
+async function syncBuilds(){
+  if(!currentSession?.user){
+    accountMessage('Log in before syncing.');
+    return;
+  }
+
+  $('syncBtn').disabled=true;
+  accountMessage('Syncing builds...');
+
+  try{
+    const {data:remoteRows,error}=await supabase
+      .from('builds')
+      .select('id,name,data,updated_at')
+      .order('updated_at',{ascending:true});
+
+    if(error)throw error;
+
+    const remoteByClientId=new Map();
+
+    for(const row of(remoteRows||[])){
+      const clientId=row.data?.id!=null?String(row.data.id):'';
+      if(clientId)remoteByClientId.set(clientId,row);
+    }
+
+    const merged=[];
+    const localIds=new Set();
+
+    for(const local of builds){
+      const clientId=String(local.id||'');
+      if(clientId)localIds.add(clientId);
+
+      const remote=remoteByClientId.get(clientId);
+
+      if(!remote){
+        const {error:insertError}=await supabase.from('builds').insert({
+          name:local['Build Name']||'Unnamed build',
+          data:local
+        });
+
+        if(insertError)throw insertError;
+        merged.push(local);
+        continue;
+      }
+
+      const remoteBuild=remote.data;
+
+      if(remoteBuild&&timestampOf(remoteBuild)>timestampOf(local)){
+        merged.push(remoteBuild);
+      }else{
+        const {error:updateError}=await supabase.from('builds').update({
+          name:local['Build Name']||'Unnamed build',
+          data:local
+        }).eq('id',remote.id);
+
+        if(updateError)throw updateError;
+        merged.push(local);
+      }
+    }
+
+    for(const row of(remoteRows||[])){
+      const remoteBuild=row.data;
+      const clientId=remoteBuild?.id!=null?String(remoteBuild.id):'';
+
+      if(remoteBuild&&typeof remoteBuild==='object'&&
+        (!clientId||!localIds.has(clientId))){
+        merged.push(normalize(remoteBuild));
+        if(clientId)localIds.add(clientId);
+      }
+    }
+
+    builds=merged;
+
+    if(!persist()){
+      throw new Error('Cloud sync completed but local storage could not save the results. Export a backup.');
+    }
+
+    render();
+    accountMessage('Sync complete. '+builds.length+' build(s) available.');
+  }catch(error){
+    accountMessage('Sync failed: '+(error.message||'Unknown error'));
+  }finally{
+    $('syncBtn').disabled=!currentSession?.user;
+  }
+}
+
+/* BUTTONS */
+$('newBtn').onclick=()=>openEditor();
+$('cancelBtn').onclick=()=>{
+  $('editor').hidden=true;
+  editingId=null;
+};
+$('search').oninput=render;
+$('category').onchange=render;
+
 $('signupBtn').onclick=createAccount;
 $('loginBtn').onclick=loginAccount;
 $('resetPasswordBtn').onclick=resetAccountPassword;
@@ -541,22 +1108,34 @@ $('saveNewPasswordBtn').onclick=saveNewPassword;
 $('logoutBtn').onclick=logoutAccount;
 $('syncBtn').onclick=syncBuilds;
 
+/* RESTORE LOGIN */
 supabase.auth.onAuthStateChange((event,session)=>{
   updateAccountUI(session);
+
   if(event==='PASSWORD_RECOVERY'){
     $('newPasswordArea').hidden=false;
     accountMessage('Choose a new password below.');
   }
 });
 
-const {data:{session},error:sessionError}=await supabase.auth.getSession();
-if(sessionError)accountMessage(sessionError.message);
-else updateAccountUI(session);
-
-if('serviceWorker' in navigator&&location.protocol!=='file:'){
-  window.addEventListener('load',()=>navigator.serviceWorker.register('./service-worker.js').catch(()=>{}));
-}
+/* START */
+createForm();
+builds=loadBuilds();
 render();
+
+const {data:{session},error:sessionError}=await supabase.auth.getSession();
+
+if(sessionError){
+  accountMessage(sessionError.message);
+}else{
+  updateAccountUI(session);
+}
+
+if('serviceWorker'in navigator&&location.protocol!=='file:'){
+  window.addEventListener('load',()=>{
+    navigator.serviceWorker.register('./service-worker.js').catch(()=>{});
+  });
+}
 </script>
 </body>
 </html>
