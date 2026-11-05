@@ -63,7 +63,7 @@ input,select,textarea,button{
 input,select,textarea{width:100%}
 button{cursor:pointer;background:#254b34}
 button:hover{background:#356b48}
-button:disabled{opacity:.45;cursor:not-allowed}
+button:disabled{opacity:.4;cursor:not-allowed}
 button.primary{background:#356b48}
 button.danger{background:#633638}
 label{display:block;color:#b8cebf;font-size:13px;margin:9px 0 5px}
@@ -85,7 +85,10 @@ small,.muted{color:var(--muted)}
   padding:15px;border-radius:13px;
   min-width:0;
 }
-.card h3{font:21px Georgia,serif;margin:0 0 10px;overflow-wrap:anywhere}
+.card h3{
+  font:21px Georgia,serif;
+  margin:0 0 10px;overflow-wrap:anywhere
+}
 .tag{
   display:inline-block;padding:4px 8px;margin:2px;
   border:1px solid var(--line);border-radius:20px;
@@ -95,10 +98,6 @@ small,.muted{color:var(--muted)}
 .actions button{padding:8px 12px}
 .form-actions{display:flex;gap:9px;flex-wrap:wrap;margin-top:13px}
 .form-actions button{width:auto}
-#empty{
-  padding:35px;text-align:center;color:var(--muted);
-  border:1px dashed var(--line);border-radius:12px;
-}
 #editor h2{font-family:Georgia,serif;font-weight:500}
 .builder-top{
   display:grid;grid-template-columns:repeat(3,minmax(0,1fr));
@@ -139,6 +138,30 @@ small,.muted{color:var(--muted)}
 #accountPanel input{width:100%}
 .filewrap input{max-width:240px}
 a{color:#c7e7cf;overflow-wrap:anywhere}
+.shrine-controls{
+  display:flex;gap:8px;flex-wrap:wrap;margin-top:12px
+}
+.shrine-controls button{flex:1 1 145px}
+.shrine-controls .active{
+  border-color:var(--green);
+  background:#356b48;
+}
+#shrineStatus{
+  margin-top:12px;padding:11px;
+  border:1px solid var(--line);
+  border-radius:9px;
+  background:rgba(45,91,58,.2);
+  color:var(--muted);
+  font-size:13px;
+  white-space:pre-wrap;
+}
+.shrine-explanation{
+  color:var(--muted);font-size:13px;line-height:1.5
+}
+#empty{
+  padding:35px;text-align:center;color:var(--muted);
+  border:1px dashed var(--line);border-radius:12px;
+}
 @media(max-width:760px){
   .toolbar{grid-template-columns:1fr 1fr}
   .toolbar #search{grid-column:1/-1}
@@ -223,8 +246,28 @@ a{color:#c7e7cf;overflow-wrap:anywhere}
   <form id="buildForm">
     <div class="builder-top" id="basicFields"></div>
 
-    <div class="builder-columns">
+    <section class="builder-section" id="shrinePanel">
+      <h3>Shrine of Order</h3>
+      <p class="shrine-explanation">
+        Save your pre-shrine investments, use Shrine of Order, then continue
+        investing in your post-shrine build. Stats at 0 remain at 0.
+        Only manually invested points are included.
+      </p>
 
+      <div class="shrine-controls">
+        <button type="button" id="preShrineBtn">Pre-shrine</button>
+        <button type="button" id="savePreShrineBtn">Save pre-shrine</button>
+        <button type="button" id="postShrineBtn">Post-shrine</button>
+        <button type="button" id="savePostShrineBtn">Save post-shrine</button>
+        <button type="button" class="primary" id="shrineBtn">Use Shrine of Order</button>
+      </div>
+
+      <div id="shrineStatus" aria-live="polite">
+        Viewing pre-shrine investments. Enter your stats, then save your pre-shrine build.
+      </div>
+    </section>
+
+    <div class="builder-columns">
       <div>
         <section class="builder-section">
           <h3>Weapon investments</h3>
@@ -312,6 +355,7 @@ const MAX_TRAIT_POINTS=12;
 const MAX_ATTRIBUTE_VALUE=100;
 const MAX_TRAIT_VALUE=6;
 const MAX_POWER=20;
+const MAX_SHRINE_REDUCTION=25;
 
 const WEAPON_FIELDS=['Light','Medium','Heavy'];
 
@@ -354,6 +398,24 @@ let builds=[];
 let editingId=null;
 let currentSession=null;
 
+/*
+  Shrine state:
+  pre = saved/working pre-shrine stats
+  post = saved/working post-shrine stats
+  active = which version is currently displayed
+*/
+function newShrineState(){
+  return {
+    pre:null,
+    post:null,
+    active:'pre',
+    applied:false,
+    refund:0
+  };
+}
+
+let shrineState=newShrineState();
+
 /* LOCAL STORAGE */
 function loadBuilds(){
   try{
@@ -378,11 +440,36 @@ function makeId(){
   return 'dw-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,9);
 }
 
-/* CALCULATIONS */
-function getSpent(){
+/* STAT HELPERS */
+function readStats(){
+  const stats={};
+
+  INVESTMENT_FIELDS.forEach(key=>{
+    stats[key]=Math.max(0,Math.floor(Number($(fieldId(key))?.value)||0));
+  });
+
+  return stats;
+}
+
+function writeStats(stats){
+  if(!stats)return;
+
+  INVESTMENT_FIELDS.forEach(key=>{
+    const input=$(fieldId(key));
+    if(input)input.value=String(stats[key]??0);
+  });
+
+  updateCounters();
+}
+
+function totalStats(stats){
   return INVESTMENT_FIELDS.reduce(
-    (sum,key)=>sum+(Number($(fieldId(key))?.value)||0),0
+    (sum,key)=>sum+(Number(stats?.[key])||0),0
   );
+}
+
+function getSpent(){
+  return totalStats(readStats());
 }
 
 function getTraitSpent(){
@@ -395,6 +482,96 @@ function getPower(spent){
   return Math.min(MAX_POWER,Math.floor(spent/15));
 }
 
+/* SHRINE OF ORDER CALCULATION */
+function calculateShrine(preStats){
+  const original={};
+
+  INVESTMENT_FIELDS.forEach(key=>{
+    original[key]=Math.max(0,Math.floor(Number(preStats[key])||0));
+  });
+
+  /*
+    Only stats with at least 1 manually invested point
+    are included. A stat at 0 remains at 0.
+  */
+  const affected=INVESTMENT_FIELDS.filter(key=>original[key]>0);
+  const total=totalStats(original);
+
+  if(!affected.length){
+    return {
+      stats:{...original},
+      refund:0,
+      affected:0,
+      message:'No invested stats were found. Nothing was redistributed.'
+    };
+  }
+
+  /*
+    Water-filling equalization:
+    - Start by evenly dividing all invested points.
+    - Core attributes and weapon stats cannot lose more than 25.
+    - Attunements have no 25-point reduction limit.
+    - When a stat reaches its reduction limit, lock it there
+      and redistribute its remaining share among the other stats.
+  */
+  const frozen=new Set();
+  let target=0;
+
+  while(true){
+    const unfrozen=affected.filter(key=>!frozen.has(key));
+
+    if(!unfrozen.length)break;
+
+    const frozenTotal=affected
+      .filter(key=>frozen.has(key))
+      .reduce((sum,key)=>sum+(original[key]-MAX_SHRINE_REDUCTION),0);
+
+    const remainingTotal=total-frozenTotal;
+    target=remainingTotal/unfrozen.length;
+
+    const newlyFrozen=unfrozen.filter(key=>{
+      const isAttunement=ATTUNEMENT_FIELDS.includes(key);
+
+      if(isAttunement)return false;
+
+      return original[key]-target>MAX_SHRINE_REDUCTION;
+    });
+
+    if(!newlyFrozen.length)break;
+
+    newlyFrozen.forEach(key=>frozen.add(key));
+  }
+
+  const result={...original};
+
+  affected.forEach(key=>{
+    if(frozen.has(key)){
+      result[key]=original[key]-MAX_SHRINE_REDUCTION;
+    }else{
+      result[key]=Math.floor(target);
+    }
+  });
+
+  /*
+    Any points lost through rounding down are refunded.
+    They remain available in the normal 330-point budget.
+  */
+  const spentAfter=totalStats(result);
+  const refund=Math.max(0,total-spentAfter);
+
+  return {
+    stats:result,
+    refund,
+    affected:affected.length,
+    message:
+      `Shrine completed.\n`+
+      `${affected.length} invested stats included.\n`+
+      `${spentAfter} points redistributed.\n`+
+      `${refund} points refunded and available to invest.`
+  };
+}
+
+/* COUNTERS */
 function updateCounters(){
   const spent=getSpent();
   const remaining=MAX_ATTRIBUTE_POINTS-spent;
@@ -428,16 +605,19 @@ function limitInvestment(input,key){
 
   value=Math.min(value,individualMax,remaining);
   input.value=String(value);
+
   updateCounters();
 }
 
 function limitTrait(input){
   let value=Math.max(0,Math.floor(Number(input.value)||0));
+
   const otherSpent=getTraitSpent()-(Number(input.value)||0);
   const remaining=Math.max(0,MAX_TRAIT_POINTS-otherSpent);
 
   value=Math.min(value,MAX_TRAIT_VALUE,remaining);
   input.value=String(value);
+
   updateCounters();
 }
 
@@ -511,6 +691,27 @@ function createForm(){
   DETAIL_FIELDS.forEach(key=>makeField(key,$('detailFields')));
 }
 
+/* NORMALIZE STATS */
+function normalizeStats(stats){
+  const out={};
+  let remaining=MAX_ATTRIBUTE_POINTS;
+
+  INVESTMENT_FIELDS.forEach(key=>{
+    const value=Math.max(0,Math.floor(Number(stats?.[key])||0));
+
+    const max=ATTRIBUTE_FIELDS.includes(key)
+      ?MAX_ATTRIBUTE_VALUE
+      :MAX_ATTRIBUTE_POINTS;
+
+    const allowed=Math.min(value,max,remaining);
+
+    out[key]=String(allowed);
+    remaining-=allowed;
+  });
+
+  return out;
+}
+
 /* BUILD NORMALIZATION */
 function normalize(build){
   const out={};
@@ -526,34 +727,149 @@ function normalize(build){
   out.createdAt=build?.createdAt||new Date().toISOString();
   out.updatedAt=new Date().toISOString();
 
-  let remaining=MAX_ATTRIBUTE_POINTS;
+  Object.assign(out,normalizeStats(out));
 
-  INVESTMENT_FIELDS.forEach(key=>{
-    const value=Math.max(0,Math.floor(Number(out[key])||0));
-    const max=ATTRIBUTE_FIELDS.includes(key)
-      ?MAX_ATTRIBUTE_VALUE
-      :MAX_ATTRIBUTE_POINTS;
-
-    const allowed=Math.min(value,max,remaining);
-    out[key]=String(allowed);
-    remaining-=allowed;
-  });
-
-  remaining=MAX_TRAIT_POINTS;
+  let remaining=MAX_TRAIT_POINTS;
 
   TRAIT_FIELDS.forEach(key=>{
     const value=Math.max(0,Math.floor(Number(out[key])||0));
     const allowed=Math.min(value,MAX_TRAIT_VALUE,remaining);
+
     out[key]=String(allowed);
     remaining-=allowed;
   });
 
-  const spent=INVESTMENT_FIELDS.reduce(
-    (sum,key)=>sum+(Number(out[key])||0),0
-  );
+  out.PreShrineStats=build?.PreShrineStats
+    ?normalizeStats(build.PreShrineStats)
+    :null;
 
+  out.PostShrineStats=build?.PostShrineStats
+    ?normalizeStats(build.PostShrineStats)
+    :null;
+
+  out.ShrineUsed=Boolean(build?.ShrineUsed);
+  out.ShrineRefund=Math.max(0,Math.floor(Number(build?.ShrineRefund)||0));
+
+  out.ActiveShrineView=
+    build?.ActiveShrineView==='post'?'post':'pre';
+
+  const spent=totalStats(out);
   out.Power=String(getPower(spent));
+
   return out;
+}
+
+/* SHRINE INTERFACE */
+function updateShrineUI(message=''){
+  const active=shrineState.active;
+
+  $('preShrineBtn').classList.toggle('active',active==='pre');
+  $('postShrineBtn').classList.toggle('active',active==='post');
+
+  $('preShrineBtn').disabled=!shrineState.pre;
+  $('postShrineBtn').disabled=!shrineState.post;
+
+  $('savePreShrineBtn').disabled=active!=='pre';
+  $('savePostShrineBtn').disabled=active!=='post';
+
+  $('shrineBtn').disabled=
+    active!=='pre'||shrineState.applied;
+
+  if(message){
+    $('shrineStatus').textContent=message;
+    return;
+  }
+
+  if(active==='pre'){
+    $('shrineStatus').textContent=
+      'Viewing PRE-SHRINE stats.\n'+
+      (shrineState.applied
+        ?'Shrine has already been used for this build.'
+        :'Save your pre-shrine stats, then press Use Shrine of Order when ready.');
+  }else{
+    $('shrineStatus').textContent=
+      'Viewing POST-SHRINE stats.\n'+
+      'You can continue investing points here. Save post-shrine when finished.\n'+
+      (shrineState.applied
+        ?`Points refunded by Shrine: ${shrineState.refund}`
+        :'');
+  }
+}
+
+function switchShrineView(view){
+  if(view===shrineState.active)return;
+
+  /*
+    Keep the current working values when changing views,
+    so unsaved edits are not lost while switching.
+  */
+  shrineState[shrineState.active]=readStats();
+
+  if(!shrineState[view]){
+    updateShrineUI(
+      view==='post'
+        ?'No post-shrine stats exist yet. Use Shrine of Order first.'
+        :'No pre-shrine snapshot exists.'
+    );
+    return;
+  }
+
+  shrineState.active=view;
+  writeStats(shrineState[view]);
+  updateShrineUI();
+}
+
+function savePreShrine(){
+  if(shrineState.active!=='pre')return;
+
+  shrineState.pre=readStats();
+
+  updateShrineUI(
+    'Pre-shrine stats saved in this build editor.\n'+
+    'Remember to press Save build to store the complete build in your vault.'
+  );
+}
+
+function savePostShrine(){
+  if(shrineState.active!=='post')return;
+
+  shrineState.post=readStats();
+
+  updateShrineUI(
+    'Post-shrine stats saved in this build editor.\n'+
+    'You can continue investing points, then save again when finished.\n'+
+    'Remember to press Save build to store the complete build in your vault.'
+  );
+}
+
+function useShrine(){
+  if(shrineState.active!=='pre'){
+    updateShrineUI('Switch to Pre-shrine before using Shrine of Order.');
+    return;
+  }
+
+  if(shrineState.applied){
+    updateShrineUI('Shrine of Order has already been used for this build.');
+    return;
+  }
+
+  const pre=readStats();
+
+  if(totalStats(pre)===0){
+    updateShrineUI('Invest some points before using Shrine of Order.');
+    return;
+  }
+
+  const result=calculateShrine(pre);
+
+  shrineState.pre={...pre};
+  shrineState.post={...result.stats};
+  shrineState.applied=true;
+  shrineState.refund=result.refund;
+  shrineState.active='post';
+
+  writeStats(shrineState.post);
+  updateShrineUI(result.message+'\n\nYou are now viewing POST-SHRINE stats.');
 }
 
 /* EDITOR */
@@ -561,9 +877,10 @@ function clearEditor(){
   $('buildForm').reset();
   $('notes').value='';
 
-  $('category').value=$('category').value;
+  shrineState=newShrineState();
 
   updateCounters();
+  updateShrineUI();
 }
 
 function openEditor(id=null){
@@ -586,13 +903,52 @@ function openEditor(id=null){
       });
 
     $('notes').value=build.Notes||'';
+
+    const rootStats=readStatsFromBuild(build);
+
+    shrineState={
+      pre:build.PreShrineStats
+        ?{...build.PreShrineStats}
+        :{...rootStats},
+
+      post:build.PostShrineStats
+        ?{...build.PostShrineStats}
+        :null,
+
+      active:build.ActiveShrineView==='post'&&build.PostShrineStats
+        ?'post'
+        :'pre',
+
+      applied:Boolean(build.ShrineUsed),
+      refund:Number(build.ShrineRefund)||0
+    };
+
+    const startingView=shrineState.active==='post'
+      ?shrineState.post
+      :shrineState.pre;
+
+    writeStats(startingView||rootStats);
   }else{
+    shrineState=newShrineState();
+
     $(fieldId('Category')).value='PVP';
     $(fieldId('Status')).value='Unverified';
+
+    updateCounters();
   }
 
-  updateCounters();
+  updateShrineUI();
   window.scrollTo({top:0,behavior:'smooth'});
+}
+
+function readStatsFromBuild(build){
+  const stats={};
+
+  INVESTMENT_FIELDS.forEach(key=>{
+    stats[key]=Math.max(0,Math.floor(Number(build?.[key])||0));
+  });
+
+  return stats;
 }
 
 /* SAVE */
@@ -624,8 +980,26 @@ $('buildForm').addEventListener('submit',event=>{
     }
   }
 
+  /*
+    Save the currently displayed stage before saving the build.
+  */
+  shrineState[shrineState.active]=readStats();
+
+  build.PreShrineStats=shrineState.pre
+    ?{...shrineState.pre}
+    :null;
+
+  build.PostShrineStats=shrineState.post
+    ?{...shrineState.post}
+    :null;
+
+  build.ShrineUsed=shrineState.applied;
+  build.ShrineRefund=shrineState.refund;
+  build.ActiveShrineView=shrineState.active;
+
   if(editingId){
     const index=builds.findIndex(item=>item.id===editingId);
+
     if(index>=0){
       build.id=editingId;
       build.createdAt=builds[index].createdAt;
@@ -637,6 +1011,7 @@ $('buildForm').addEventListener('submit',event=>{
 
   if(persist()){
     $('editor').hidden=true;
+    editingId=null;
     render();
   }
 });
@@ -674,9 +1049,14 @@ function render(){
       }
     });
 
-    const spent=INVESTMENT_FIELDS.reduce(
-      (sum,key)=>sum+(Number(build[key])||0),0
-    );
+    if(build.ShrineUsed){
+      const shrineTag=document.createElement('span');
+      shrineTag.className='tag';
+      shrineTag.textContent='Shrine of Order: Used';
+      card.append(shrineTag);
+    }
+
+    const spent=totalStats(build);
 
     const investment=document.createElement('p');
     investment.className='muted';
@@ -701,6 +1081,7 @@ function render(){
     if(build['Builder Link']){
       try{
         const url=new URL(build['Builder Link']);
+
         if(['http:','https:'].includes(url.protocol)){
           const link=document.createElement('a');
           link.href=url.href;
@@ -728,6 +1109,7 @@ function render(){
     const remove=document.createElement('button');
     remove.textContent='Delete';
     remove.className='danger';
+
     remove.onclick=()=>{
       if(confirm('Delete "'+(build['Build Name']||'this build')+'"?')){
         builds=builds.filter(item=>item.id!==build.id);
@@ -746,9 +1128,11 @@ function download(name,content,type){
   const blob=new Blob([content],{type});
   const url=URL.createObjectURL(blob);
   const anchor=document.createElement('a');
+
   anchor.href=url;
   anchor.download=name;
   anchor.click();
+
   setTimeout(()=>URL.revokeObjectURL(url),1000);
 }
 
@@ -757,7 +1141,7 @@ $('exportBtn').onclick=()=>{
     'deepwoken-build-vault-backup.json',
     JSON.stringify({
       project:'DEEPWOKEN BUILD VAULT',
-      schemaVersion:3,
+      schemaVersion:4,
       exportedAt:new Date().toISOString(),
       builds
     },null,2),
@@ -781,8 +1165,11 @@ function parseCSV(text){
       row.push(cell);cell='';
     }else if((c==='\n'||c==='\r')&&!quoted){
       if(c==='\r'&&next==='\n')i++;
+
       row.push(cell);
+
       if(row.some(v=>v.trim()))rows.push(row);
+
       row=[];cell='';
     }else{
       cell+=c;
@@ -792,7 +1179,9 @@ function parseCSV(text){
   row.push(cell);
   if(row.some(v=>v.trim()))rows.push(row);
 
-  if(rows.length<2)throw new Error('CSV needs a header and at least one data row.');
+  if(rows.length<2){
+    throw new Error('CSV needs a header and at least one data row.');
+  }
 
   const headers=rows.shift().map(v=>v.trim());
 
@@ -829,13 +1218,17 @@ $('importFile').onchange=async event=>{
       incoming=Array.isArray(parsed)?parsed:parsed.builds;
     }
 
-    if(!Array.isArray(incoming))throw new Error('No builds array found.');
+    if(!Array.isArray(incoming)){
+      throw new Error('No builds array found.');
+    }
 
     const valid=incoming
       .filter(item=>item&&typeof item==='object'&&!Array.isArray(item))
       .map(normalize);
 
-    if(!valid.length)throw new Error('No valid build records found.');
+    if(!valid.length){
+      throw new Error('No valid build records found.');
+    }
 
     if($('importMode').value==='replace'){
       if(!confirm(`Replace ${builds.length} builds with ${valid.length} imported builds?`))return;
@@ -938,7 +1331,9 @@ async function loginAccount(){
 
   try{
     const {data,error}=await supabase.auth.signInWithPassword({email,password});
+
     if(error)throw error;
+
     updateAccountUI(data.session);
   }catch(error){
     accountMessage(error.message||'Login failed.');
@@ -964,6 +1359,7 @@ async function resetAccountPassword(){
     });
 
     if(error)throw error;
+
     accountMessage('If that address has an account, a password reset email has been sent.');
   }catch(error){
     accountMessage(error.message||'Could not request password reset.');
@@ -980,6 +1376,7 @@ async function saveNewPassword(){
 
   try{
     const {error}=await supabase.auth.updateUser({password});
+
     if(error)throw error;
 
     $('newPassword').value='';
@@ -1047,6 +1444,7 @@ async function syncBuilds(){
         });
 
         if(insertError)throw insertError;
+
         merged.push(local);
         continue;
       }
@@ -1054,7 +1452,7 @@ async function syncBuilds(){
       const remoteBuild=remote.data;
 
       if(remoteBuild&&timestampOf(remoteBuild)>timestampOf(local)){
-        merged.push(remoteBuild);
+        merged.push(normalize(remoteBuild));
       }else{
         const {error:updateError}=await supabase.from('builds').update({
           name:local['Build Name']||'Unnamed build',
@@ -1062,6 +1460,7 @@ async function syncBuilds(){
         }).eq('id',remote.id);
 
         if(updateError)throw updateError;
+
         merged.push(local);
       }
     }
@@ -1094,12 +1493,21 @@ async function syncBuilds(){
 
 /* BUTTONS */
 $('newBtn').onclick=()=>openEditor();
+
 $('cancelBtn').onclick=()=>{
   $('editor').hidden=true;
   editingId=null;
+  shrineState=newShrineState();
 };
+
 $('search').oninput=render;
 $('category').onchange=render;
+
+$('preShrineBtn').onclick=()=>switchShrineView('pre');
+$('postShrineBtn').onclick=()=>switchShrineView('post');
+$('savePreShrineBtn').onclick=savePreShrine;
+$('savePostShrineBtn').onclick=savePostShrine;
+$('shrineBtn').onclick=useShrine;
 
 $('signupBtn').onclick=createAccount;
 $('loginBtn').onclick=loginAccount;
@@ -1120,7 +1528,9 @@ supabase.auth.onAuthStateChange((event,session)=>{
 
 /* START */
 createForm();
-builds=loadBuilds();
+
+builds=loadBuilds().map(normalize);
+persist();
 render();
 
 const {data:{session},error:sessionError}=await supabase.auth.getSession();
