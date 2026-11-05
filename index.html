@@ -1818,6 +1818,164 @@ if('serviceWorker'in navigator&&location.protocol!=='file:'){
     navigator.serviceWorker.register('./service-worker.js').catch(()=>{});
   });
 }
+  /* COMMUNITY BUILD VIEWER — READ ONLY */
+
+let viewingCommunityBuild = false;
+
+function openCommunityViewer(build) {
+  if (!build) return;
+
+  viewingCommunityBuild = true;
+  editingId = null;
+
+  $('buildForm').reset();
+  $('editor').hidden = false;
+  $('formTitle').textContent =
+    'Community Build: ' + (build['Build Name'] || 'Unnamed build');
+
+  [
+    ...BASIC_FIELDS,
+    ...WEAPON_FIELDS,
+    ...ATTUNEMENT_FIELDS,
+    ...CHARACTER_FIELDS,
+    ...ATTRIBUTE_FIELDS,
+    ...TRAIT_FIELDS,
+    ...DETAIL_FIELDS
+  ].forEach(key => {
+    const input = $(fieldId(key));
+    if (input) input.value = build[key] ?? '';
+  });
+
+  $('notes').value = build.Notes || '';
+
+  const rootStats = readStatsFromBuild(build);
+
+  shrineState = {
+    pre: build.PreShrineStats
+      ? {...build.PreShrineStats}
+      : {...rootStats},
+    post: build.PostShrineStats
+      ? {...build.PostShrineStats}
+      : null,
+    active:
+      build.ActiveShrineView === 'post' && build.PostShrineStats
+        ? 'post'
+        : 'pre',
+    applied: Boolean(build.ShrineUsed),
+    refund: Number(build.ShrineRefund) || 0
+  };
+
+  writeStats(
+    shrineState.active === 'post'
+      ? shrineState.post
+      : shrineState.pre
+  );
+
+  // Lock the original build fields.
+  $('buildForm')
+    .querySelectorAll('input, select, textarea')
+    .forEach(control => control.disabled = true);
+
+  // Allow Shrine controls and the Close button.
+  $('buildForm').querySelectorAll('button').forEach(button => {
+    button.disabled =
+      !button.closest('.shrine-controls') &&
+      button.id !== 'cancelBtn';
+  });
+
+  $('buildForm').querySelector('button[type="submit"]').hidden = true;
+  $('cancelBtn').textContent = 'Close viewer';
+
+  updateCounters();
+  updateShrineUI();
+
+  window.scrollTo({top: 0, behavior: 'smooth'});
+}
+
+// Add a View button to every Community Build card.
+const originalRender = render;
+
+render = function() {
+  originalRender();
+
+  if (pageMode !== 'community') return;
+
+  const query = $('search').value.toLowerCase();
+  const category = $('category').value;
+
+  const shown = communityBuilds.filter(build =>
+    (!category || build.Category === category) &&
+    Object.values(build).join(' ').toLowerCase().includes(query)
+  );
+
+  [...$('cards').children].forEach((card, index) => {
+    const build = shown[index];
+    if (!build) return;
+
+    const actions = card.querySelector('.actions') ||
+      document.createElement('div');
+
+    actions.className = 'actions';
+
+    const view = document.createElement('button');
+    view.type = 'button';
+    view.textContent = 'View stats & Shrine';
+    view.onclick = () => openCommunityViewer(build);
+
+    actions.append(view);
+
+    if (!actions.parentElement) card.append(actions);
+  });
+};
+
+// Restore editing controls when opening a normal My Vault build.
+const originalOpenEditor = openEditor;
+
+openEditor = function(id = null) {
+  viewingCommunityBuild = false;
+
+  $('buildForm')
+    .querySelectorAll('input, select, textarea, button')
+    .forEach(control => control.disabled = false);
+
+  $('buildForm').querySelector('button[type="submit"]').hidden = false;
+  $('cancelBtn').textContent = 'Cancel';
+
+  originalOpenEditor(id);
+};
+
+// Prevent a community viewer from submitting or saving.
+$('buildForm').addEventListener('submit', event => {
+  if (viewingCommunityBuild) {
+    event.preventDefault();
+    event.stopImmediatePropagation();
+  }
+}, true);
+
+// Closing the viewer discards its temporary Shrine changes.
+$('cancelBtn').onclick = () => {
+  $('editor').hidden = true;
+  editingId = null;
+  viewingCommunityBuild = false;
+  shrineState = newShrineState();
+  $('cancelBtn').textContent = 'Cancel';
+};
+
+// Switching tabs closes the temporary viewer.
+const originalShowVault = showVault;
+showVault = function() {
+  viewingCommunityBuild = false;
+  originalShowVault();
+};
+
+const originalShowCommunity = showCommunity;
+showCommunity = function() {
+  viewingCommunityBuild = false;
+  originalShowCommunity();
+};
+
+// Refresh cards so the new buttons appear immediately.
+render();
 </script>
 </body>
 </html>
