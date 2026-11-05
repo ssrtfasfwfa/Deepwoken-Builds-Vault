@@ -1976,6 +1976,349 @@ showCommunity = function() {
 
 // Refresh cards so the new buttons appear immediately.
 render();
+  /* ==========================================
+   DEEPWOKEN BUILD VAULT — HOME SCREEN
+========================================== */
+
+const homeStyle = document.createElement('style');
+
+homeStyle.textContent = `
+body.app-logged-out main>:not(#accountPanel){
+  display:none!important;
+}
+body.app-logged-out .page-tabs{
+  display:none!important;
+}
+body.app-logged-in #accountPanel{
+  display:none!important;
+}
+#dashboardPanel .dashboard-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(210px,1fr));
+  gap:12px;
+  margin-top:20px;
+}
+.dashboard-card{
+  border:1px solid var(--line);
+  border-radius:12px;
+  padding:18px;
+  background:rgba(5,18,13,.6);
+}
+.dashboard-card h3{
+  font:21px Georgia,serif;
+  margin:0 0 8px;
+}
+.dashboard-card p{
+  color:var(--muted);
+  font-size:13px;
+  min-height:38px;
+}
+.dashboard-card button{width:100%}
+.dashboard-top{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:12px;
+  flex-wrap:wrap;
+}
+.dashboard-actions{
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+}
+#updatesPanel{line-height:1.6}
+#updatesPanel .update-placeholder{
+  padding:18px;
+  border:1px dashed var(--line);
+  border-radius:12px;
+  color:var(--muted);
+}
+`;
+
+document.head.append(homeStyle);
+
+/* CREATE DASHBOARD */
+
+const dashboard = document.createElement('section');
+
+dashboard.id = 'dashboardPanel';
+dashboard.className = 'panel';
+dashboard.hidden = true;
+
+dashboard.innerHTML = `
+  <div class="dashboard-top">
+    <div>
+      <h2 style="font-family:Georgia,serif;font-weight:500">
+        Your Build Vault
+      </h2>
+      <p class="muted">Welcome back. What would you like to do?</p>
+      <small id="dashboardWelcome"></small>
+    </div>
+
+    <div class="dashboard-actions">
+      <button id="dashboardSyncBtn">Sync builds</button>
+      <button id="dashboardLogoutBtn" class="danger">Log out</button>
+    </div>
+  </div>
+
+  <div class="dashboard-grid">
+
+    <article class="dashboard-card">
+      <h3>My Builds</h3>
+      <p id="dashboardVaultCount">Your private builds.</p>
+      <button id="dashboardVaultBtn" class="primary">
+        Open My Vault
+      </button>
+    </article>
+
+    <article class="dashboard-card">
+      <h3>Community Builds</h3>
+      <p id="dashboardCommunityCount">
+        Explore builds shared by other players.
+      </p>
+      <button id="dashboardCommunityBtn">
+        Explore Builds
+      </button>
+    </article>
+
+    <article class="dashboard-card">
+      <h3>Create a Build</h3>
+      <p>Start planning your next build.</p>
+      <button id="dashboardCreateBtn">
+        + Create Build
+      </button>
+    </article>
+
+    <article class="dashboard-card">
+      <h3>Update Logs</h3>
+      <p>Check the latest Deepwoken changes.</p>
+      <button id="dashboardUpdatesBtn">
+        View Updates
+      </button>
+    </article>
+
+  </div>
+`;
+
+/* UPDATE LOGS PAGE */
+
+const updatesPanel = document.createElement('section');
+
+updatesPanel.id = 'updatesPanel';
+updatesPanel.className = 'panel';
+updatesPanel.hidden = true;
+
+updatesPanel.innerHTML = `
+  <h2 style="font-family:Georgia,serif;font-weight:500">
+    Deepwoken Update Logs
+  </h2>
+
+  <p class="muted">
+    Patch notes, balance changes, and game updates.
+  </p>
+
+  <div class="update-placeholder">
+    <strong>Update feed coming soon.</strong>
+
+    <p>
+      This page will display verified Deepwoken updates,
+      including their dates and changes to weapons,
+      talents, mantras, and other game systems.
+    </p>
+
+    <p>
+      I haven't added any unverified patch notes.
+    </p>
+  </div>
+
+  <div class="form-actions">
+    <button id="backDashboardBtn">
+      Back to Dashboard
+    </button>
+  </div>
+`;
+
+/* INSERT NEW PAGES */
+
+const accountPanel = $('accountPanel');
+
+accountPanel.after(dashboard);
+dashboard.after(updatesPanel);
+
+/* ADD NAVIGATION BUTTONS */
+
+const dashboardTab = document.createElement('button');
+dashboardTab.id = 'dashboardTab';
+dashboardTab.type = 'button';
+dashboardTab.textContent = 'Dashboard';
+
+const updatesTab = document.createElement('button');
+updatesTab.id = 'updatesTab';
+updatesTab.type = 'button';
+updatesTab.textContent = 'Update Logs';
+
+$('vaultTab').before(dashboardTab);
+$('communityTab').after(updatesTab);
+
+/* DASHBOARD COUNTERS */
+
+function updateDashboardCounts() {
+  $('dashboardVaultCount').textContent =
+    builds.length + ' saved build(s) in your private vault.';
+
+  $('dashboardCommunityCount').textContent =
+    communityBuilds.length + ' public build(s) available.';
+}
+
+/* SHOW DASHBOARD */
+
+function showDashboardPage() {
+  if (!currentSession?.user) return;
+
+  viewingCommunityBuild = false;
+
+  $('editor').hidden = true;
+  $('dashboardPanel').hidden = false;
+  $('updatesPanel').hidden = true;
+
+  $('toolbar').hidden = true;
+  $('stats').hidden = true;
+  $('cards').hidden = true;
+  $('empty').hidden = true;
+  $('importOptions').hidden = true;
+
+  $('dashboardWelcome').textContent =
+    'Logged in as ' + currentSession.user.email;
+
+  dashboardTab.classList.add('active');
+  $('vaultTab').classList.remove('active');
+  $('communityTab').classList.remove('active');
+  updatesTab.classList.remove('active');
+
+  updateDashboardCounts();
+
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+/* SHOW UPDATE LOGS */
+
+function showUpdatesPage() {
+  if (!currentSession?.user) return;
+
+  viewingCommunityBuild = false;
+
+  $('editor').hidden = true;
+  $('dashboardPanel').hidden = true;
+  $('updatesPanel').hidden = false;
+
+  $('toolbar').hidden = true;
+  $('stats').hidden = true;
+  $('cards').hidden = true;
+  $('empty').hidden = true;
+  $('importOptions').hidden = true;
+
+  dashboardTab.classList.remove('active');
+  $('vaultTab').classList.remove('active');
+  $('communityTab').classList.remove('active');
+  updatesTab.classList.add('active');
+
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+/* CONNECT DASHBOARD TO LOGIN */
+
+const previousAccountUpdate = updateAccountUI;
+
+updateAccountUI = function(session) {
+  previousAccountUpdate(session);
+
+  const loggedIn = !!session?.user;
+
+  document.body.classList.toggle('app-logged-in',loggedIn);
+  document.body.classList.toggle('app-logged-out',!loggedIn);
+
+  if (loggedIn) {
+    showDashboardPage();
+  } else {
+    $('dashboardPanel').hidden = true;
+    $('updatesPanel').hidden = true;
+    $('editor').hidden = true;
+  }
+};
+
+/* CONNECT EXISTING VAULT AND COMMUNITY PAGES */
+
+const previousShowVault = showVault;
+
+showVault = function() {
+  previousShowVault();
+
+  if (pageMode === 'vault') {
+    $('dashboardPanel').hidden = true;
+    $('updatesPanel').hidden = true;
+
+    $('toolbar').hidden = false;
+    $('stats').hidden = false;
+    $('cards').hidden = false;
+    $('empty').hidden = false;
+
+    dashboardTab.classList.remove('active');
+    updatesTab.classList.remove('active');
+  }
+};
+
+const previousShowCommunity = showCommunity;
+
+showCommunity = function() {
+  previousShowCommunity();
+
+  $('dashboardPanel').hidden = true;
+  $('updatesPanel').hidden = true;
+
+  $('toolbar').hidden = false;
+  $('stats').hidden = false;
+  $('cards').hidden = false;
+  $('empty').hidden = false;
+
+  dashboardTab.classList.remove('active');
+  updatesTab.classList.remove('active');
+};
+
+/* BUTTON EVENTS */
+
+dashboardTab.onclick = showDashboardPage;
+updatesTab.onclick = showUpdatesPage;
+
+$('dashboardVaultBtn').onclick = showVault;
+$('dashboardCommunityBtn').onclick = showCommunity;
+
+$('dashboardCreateBtn').onclick = () => {
+  showVault();
+  openEditor();
+};
+
+$('dashboardUpdatesBtn').onclick = showUpdatesPage;
+
+$('dashboardSyncBtn').onclick = syncBuilds;
+$('dashboardLogoutBtn').onclick = logoutAccount;
+
+$('backDashboardBtn').onclick = showDashboardPage;
+
+/* KEEP DASHBOARD COUNTERS UPDATED */
+
+const previousDashboardRender = render;
+
+render = function() {
+  previousDashboardRender();
+
+  if ($('dashboardPanel')) {
+    updateDashboardCounts();
+  }
+};
+
+/* INITIAL AUTHENTICATION STATE */
+
+updateAccountUI(currentSession);
 </script>
 </body>
 </html>
